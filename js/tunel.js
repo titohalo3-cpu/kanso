@@ -77,7 +77,7 @@ export function crearTunel(contenedor, { fondo = "#ecebe6", alElegir = () => {},
 
   const escena = new THREE.Scene();
   const camara = new THREE.PerspectiveCamera(34, 2, 0.1, 100);
-  camara.position.set(0, 0.25, 8);
+  camara.position.set(0, 0.2, 6.9);
   camara.lookAt(0, 0, -6);
 
   const suelo = new THREE.Color(fondo);
