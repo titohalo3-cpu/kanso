@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kansō · Lo que he visto, nota a nota</title>
+  <title>AnimeMatch · Mi diario de anime</title>
   <meta name="description" content="Mi diario de anime: cada serie con su portada, sus temporadas y la nota que le puse al terminarla.">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#ecebe6">
@@ -24,17 +24,13 @@
       <span class="marca__sello" aria-hidden="true">感</span>
       <span class="marca__nombre">Kansō</span>
     </a>
-    <nav class="barra__nav" aria-label="Secciones">
-      <a href="#top">Mejor valorados</a>
-      <a href="#lista">La lista</a>
-    </nav>
     <button class="boton boton--oscuro barra__accion" id="btn-anadir" type="button">Añadir anime</button>
   </header>
 
   <main>
     <section class="hero" aria-labelledby="titulo">
       <div class="hero__texto">
-        <h1 class="hero__titulo" id="titulo">Lo que he visto, <span class="hero__tenue">nota a nota.</span></h1>
+        <h1 class="hero__titulo" id="titulo">Anime<span class="hero__tenue">Match</span></h1>
         <p class="hero__entrada">Mi diario de anime: cada serie con su portada, sus temporadas y la nota que le puse al terminarla.</p>
         <div class="hero__acciones">
           <button class="boton boton--oscuro" id="btn-anadir-hero" type="button">
@@ -94,15 +90,14 @@
           <div class="selector">
             <label class="sr" for="orden">Ordenar por</label>
             <select id="orden">
-              <option value="recientes">Recientes</option>
-              <option value="nota">Mejor nota</option>
-              <option value="nombre">Nombre (A-Z)</option>
-              <option value="anio">Año de estreno</option>
+              <option value="recientes">Añadidos recientemente</option>
+              <option value="antiguos">Más antiguos</option>
+              <option value="nombre">De la A a la Z</option>
+              <option value="nota">Mejor valorados</option>
             </select>
           </div>
         </div>
       </div>
-      <div class="chips" id="generos" role="group" aria-label="Filtrar por género"></div>
       <ul class="rejilla" id="rejilla" aria-busy="true">
         <li class="celda celda--esqueleto"></li><li class="celda celda--esqueleto"></li>
         <li class="celda celda--esqueleto"></li><li class="celda celda--esqueleto"></li>
@@ -115,13 +110,6 @@
     </section>
   </main>
 
-  <footer class="pie">
-    <p class="pie__marca" aria-hidden="true">Kansō</p>
-    <div class="pie__fila">
-      <p>感想, kansō: la impresión que te deja algo al terminarlo.</p>
-      <p>Portadas e información de <a href="https://anilist.co" rel="noopener">AniList</a>.</p>
-    </div>
-  </footer>
 
   <!-- Detalle de un anime con sus temporadas -->
   <dialog class="modal" id="detalle" aria-labelledby="det-nombre">

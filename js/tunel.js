@@ -156,10 +156,16 @@ export function crearTunel(contenedor, { fondo = "#ecebe6", alElegir = () => {},
     return entrada;
   }
 
+  // Cada imagen sale una sola vez: si hay menos imágenes que huecos, se reparten más separadas
   function ponerImagenes(items) {
     if (!items.length) return;
+    const n = Math.min(items.length, tarjetas.length);
+    const separacion = total / n;
     tarjetas.forEach((malla, i) => {
-      const item = items[i % items.length];
+      malla.visible = i < n;
+      if (!malla.visible) return;
+      malla.userData.base = i * Math.max(paso, separacion);
+      const item = items[i];
       const u = malla.material.uniforms;
       malla.userData.item = item;
       u.uColor.value.set(item.color || "#2a2a33");
@@ -221,7 +227,7 @@ export function crearTunel(contenedor, { fondo = "#ecebe6", alElegir = () => {},
     const r = lienzo.getBoundingClientRect();
     puntero.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     rayo.setFromCamera(puntero, camara);
-    const [golpe] = rayo.intersectObjects(tarjetas, false);
+    const [golpe] = rayo.intersectObjects(tarjetas.filter((t) => t.visible), false);
     if (golpe?.object.userData.item) alElegir(golpe.object.userData.item);
   }
   lienzo.addEventListener("pointermove", (e) => {
@@ -229,7 +235,7 @@ export function crearTunel(contenedor, { fondo = "#ecebe6", alElegir = () => {},
     const r = lienzo.getBoundingClientRect();
     puntero.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
     rayo.setFromCamera(puntero, camara);
-    contenedor.classList.toggle("sobre-portada", rayo.intersectObjects(tarjetas, false).length > 0);
+    contenedor.classList.toggle("sobre-portada", rayo.intersectObjects(tarjetas.filter((t) => t.visible), false).length > 0);
   });
 
   let escalaX = 1;

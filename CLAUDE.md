@@ -12,19 +12,20 @@ Registro personal de los animes que he visto: portada, nombre, nota y, si tiene 
 
 ## Estructura
 
-- `index.html` — hero con túnel, carril «Mejor valorados», lista con buscador, orden y géneros, pie y diálogos.
+- `index.html` — hero «AnimeMatch» con túnel, carril «Mejor valorados», lista con buscador y orden (recientes, antiguos, A-Z, mejor valorados) y diálogos.
 - `css/estilos.css` — tokens en `:root` (oscuro y claro) y estilos. Dirección visual en `DESIGN.md`.
 - `js/main.js` — render, filtros, detalle, formularios y sesión.
 - `js/datos.js` — Supabase o, si no hay tablas (o con `?demo` en la URL), modo demo en localStorage (`kanso:demo:v1`).
-- `js/tunel.js` — túnel WebGL de portadas (three.js).
+- `js/tunel.js` — túnel WebGL de portadas (three.js), una por anime, sin repetir.
+- `js/apilado.js` — pila de cartas de temporadas en la ficha (adaptación de «Card swap» de bencho.dev).
 - `js/animaciones.js` — todo el movimiento; respeta `prefers-reduced-motion`.
 
 ## Interacción principal
 
 Lo que `probador-web` debe poder hacer para dar el proyecto por bueno:
 - Ver la rejilla de pósters y el carril de mejor valorados.
-- Filtrar por texto y por género, y cambiar el orden.
-- Pulsar un anime con varias temporadas y ver cada temporada con su nota.
+- Filtrar por texto y cambiar el orden.
+- Pulsar un anime con varias temporadas (fondo desenfocado) y pasar sus cartas de temporada con un toque o arrastrando.
 - Arrastrar el túnel y pulsar una portada (abre la ficha o el formulario con ese anime).
 - Añadir un anime buscando la portada en AniList y añadirle una temporada.
 

@@ -1,13 +1,14 @@
 import * as datos from "./datos.js";
 import * as anilist from "./anilist.js";
 import * as fx from "./animaciones.js";
+import { crearApilado } from "./apilado.js";
 
 const reducido = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let tunel = null;
 let relleno = []; // portadas en tendencia para el túnel mientras la lista es corta
 
 const $ = (s, r = document) => r.querySelector(s);
-const estado = { series: [], texto: "", genero: null, orden: "recientes", editable: true, abierta: null };
+const estado = { series: [], texto: "", orden: "recientes", editable: true, abierta: null };
 let contexto = null; // qué edita el formulario: { tipo: "serie" | "temporada", id?, serie_id? }
 
 // --- Utilidades --------------------------------------------------------------
@@ -128,15 +129,15 @@ function tarjetaAncha(s, puesto) {
 // --- Render ------------------------------------------------------------------
 const ORDENES = {
   recientes: (a, b) => new Date(b.creado_en) - new Date(a.creado_en),
+  antiguos: (a, b) => new Date(a.creado_en) - new Date(b.creado_en),
   nota: (a, b) => (notaDe(b) ?? -1) - (notaDe(a) ?? -1),
   nombre: (a, b) => a.nombre.localeCompare(b.nombre, "es"),
-  anio: (a, b) => (b.anio || 0) - (a.anio || 0),
 };
 
 function filtradas() {
   const t = normal(estado.texto.trim());
   return estado.series
-    .filter((s) => (!t || normal(`${s.nombre} ${s.titulo_original || ""}`).includes(t)) && (!estado.genero || s.generos?.includes(estado.genero)))
+    .filter((s) => (!t || normal(`${s.nombre} ${s.titulo_original || ""}`).includes(t)))
     .sort(ORDENES[estado.orden]);
 }
 
@@ -152,7 +153,7 @@ function render({ animar = "no" } = {}) {
     ? "Nada coincide con ese filtro."
     : "Aún no has apuntado ningún anime. Empieza por el último que terminaste.";
 
-  const filtrando = estado.texto.trim() || estado.genero;
+  const filtrando = estado.texto.trim();
   const top = estado.series.filter((s) => notaDe(s) != null).sort(ORDENES.nota).slice(0, 10);
   $("#top").hidden = filtrando || top.length < 2;
   if (animar === "todo" || !$("#carril").children.length || animar === "no") {
@@ -161,22 +162,10 @@ function render({ animar = "no" } = {}) {
   }
 
   $("#contador").textContent = `${plural(estado.series.length, "anime", "animes")} en la lista`;
-  renderGeneros();
   if (animar === "todo") {
     fx.entrada([...rejilla.children]);
     fx.entradaCarril([...$("#carril").children]);
   } else if (animar === "filtro") fx.entrada([...rejilla.children], { suave: true });
-}
-
-function renderGeneros() {
-  const cuenta = new Map();
-  for (const s of estado.series) for (const g of s.generos || []) cuenta.set(g, (cuenta.get(g) || 0) + 1);
-  if (estado.genero && !cuenta.has(estado.genero)) estado.genero = null;
-  const chip = (g, texto, n) => h("button", { type: "button", class: "chip", "aria-pressed": String(estado.genero === g), dataset: { genero: g ?? "" } }, texto, n != null && h("small", {}, String(n)));
-  $("#generos").replaceChildren(
-    chip(null, "Todos"),
-    ...[...cuenta].sort((a, b) => b[1] - a[1]).map(([g, n]) => chip(g, g, n)),
-  );
 }
 
 function renderStats() {
@@ -214,21 +203,46 @@ function anillo(n) {
   );
 }
 
-function filaTemporada(t, s) {
-  const n = t.nota == null ? null : Number(t.nota);
-  return h("li", { class: "temporada", style: { "--c": colorSeguro(s.color) }, dataset: { nivel: nivel(n) }, "data-entra": "" },
-    h("div", { class: "temporada__img" }, imagen(t.poster_url || s.poster_url)),
-    h("div", { class: "temporada__texto" },
-      h("span", { class: "temporada__num" }, `Temporada ${t.numero}${t.anio ? ` · ${t.anio}` : ""}`),
-      h("span", { class: "temporada__nombre" }, t.nombre),
-      h("span", { class: "barra-nota", "aria-hidden": "true" }, h("span", { class: "barra__pista" }, h("span", { class: "barra__relleno", style: { "--p": `${(n ?? 0) * 10}%` } }))),
-    ),
-    h("div", { class: "temporada__lado" },
-      h("span", { class: "temporada__nota", "aria-label": `Nota ${fmt(n)}` }, fmt(n)),
-      estado.editable && h("button", { type: "button", class: "icono", "aria-label": `Editar ${t.nombre}`, onclick: () => abrirForm({ tipo: "temporada", id: t.id, serie_id: s.id }, t) }, svg(ICONOS.editar)),
-      estado.editable && h("button", { type: "button", class: "icono", "aria-label": `Borrar ${t.nombre}`, onclick: () => borrarTemporada(t) }, svg(ICONOS.borrar)),
+// Temporadas como pila de cartas: la de delante es la que se describe al lado.
+function pilaTemporadas(temps, s) {
+  const color = { "--c": colorSeguro(s.color) };
+  const cartas = temps.map((t) =>
+    h("div", { class: "carta", style: color, "aria-hidden": "true" },
+      imagen(t.poster_url || s.poster_url, "carta__img"),
+      h("span", { class: "carta__etiqueta" }, `Temporada ${t.numero} · ${fmt(t.nota == null ? null : Number(t.nota))}`),
     ),
   );
+  const num = h("p", { class: "temporada__num" });
+  const nombre = h("h4", { class: "temporada__nombre" });
+  const nota = h("span", { class: "temporada__nota" });
+  const relleno = h("span", { class: "barra__relleno" });
+  const pos = h("p", { class: "temporada__pos" });
+  const info = h("div", { class: "temporada-info", "aria-live": "polite" },
+    num, nombre,
+    h("div", { class: "temporada__puntos" }, nota, h("span", { class: "barra__pista", "aria-hidden": "true" }, relleno)),
+    pos,
+  );
+  let actual = temps[0];
+  const acciones = h("div", { class: "temporada__acciones" },
+    temps.length > 1 && h("button", { type: "button", class: "boton boton--oscuro", onclick: () => pila.siguiente() }, "Siguiente temporada"),
+    estado.editable && h("button", { type: "button", class: "icono", "aria-label": "Editar esta temporada", onclick: () => abrirForm({ tipo: "temporada", id: actual.id, serie_id: s.id }, actual) }, svg(ICONOS.editar)),
+    estado.editable && h("button", { type: "button", class: "icono", "aria-label": "Borrar esta temporada", onclick: () => borrarTemporada(actual) }, svg(ICONOS.borrar)),
+  );
+  info.append(acciones);
+  const escenario = h("div", { class: "pila__escenario", style: { "--cuantas": String(Math.min(temps.length, 5)) } }, cartas);
+  const pila = crearApilado(escenario, cartas, {
+    alCambiar: (i) => {
+      actual = temps[i];
+      const n = actual.nota == null ? null : Number(actual.nota);
+      info.dataset.nivel = nivel(n) || "";
+      num.textContent = `Temporada ${actual.numero}${actual.anio ? ` · ${actual.anio}` : ""}`;
+      nombre.textContent = actual.nombre;
+      nota.textContent = fmt(n);
+      relleno.style.setProperty("--p", `${(n ?? 0) * 10}%`);
+      pos.textContent = temps.length > 1 ? `${i + 1} de ${temps.length} · pulsa o arrastra la carta para ver la siguiente` : "La única temporada apuntada.";
+    },
+  });
+  return h("div", { class: "pila", "data-entra": "" }, h("div", { class: "pila__marco" }, escenario), info);
 }
 
 function contenidoDetalle(s) {
@@ -256,15 +270,15 @@ function contenidoDetalle(s) {
     h("section", { class: "det__temporadas", "aria-labelledby": "det-temps" },
       h("div", { class: "det__temporadas-cab", "data-entra": "" },
         h("h3", { id: "det-temps" }, "Temporadas"),
-        estado.editable && h("button", { type: "button", class: "boton boton--fantasma", onclick: () => abrirForm({ tipo: "temporada", serie_id: s.id }, { numero: (temps.at(-1)?.numero || 0) + 1, nombre: `${s.nombre} · Temporada ${(temps.at(-1)?.numero || 0) + 1}` }) }, svg(ICONOS.mas), "Añadir temporada"),
+        estado.editable && h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "temporada", serie_id: s.id }, { numero: (temps.at(-1)?.numero || 0) + 1, nombre: `${s.nombre} · Temporada ${(temps.at(-1)?.numero || 0) + 1}` }) }, svg(ICONOS.mas), "Añadir temporada"),
       ),
       temps.length
-        ? h("ol", { class: "temporadas" }, temps.map((t) => filaTemporada(t, s)))
-        : h("p", { class: "det__solo", "data-entra": "" }, "Solo tiene una temporada (o aún no has añadido más)."),
+        ? pilaTemporadas(temps, s)
+        : h("p", { class: "det__solo", "data-entra": "" }, "Aún no has apuntado temporadas sueltas: su nota es la del anime."),
     ),
     estado.editable && h("footer", { class: "det__acciones", "data-entra": "" },
       h("button", { type: "button", class: "boton boton--peligro", onclick: () => borrarSerie(s) }, svg(ICONOS.borrar), "Borrar anime"),
-      h("button", { type: "button", class: "boton boton--fantasma", onclick: () => abrirForm({ tipo: "serie", id: s.id }, s) }, svg(ICONOS.editar), "Editar anime"),
+      h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "serie", id: s.id }, s) }, svg(ICONOS.editar), "Editar anime"),
     ),
   ];
 }
@@ -457,28 +471,22 @@ $("#orden").addEventListener("change", (e) => {
   estado.orden = e.target.value;
   render({ animar: "filtro" });
 });
-$("#generos").addEventListener("click", (e) => {
-  const b = e.target.closest(".chip");
-  if (!b) return;
-  estado.genero = b.dataset.genero || null;
-  render({ animar: "filtro" });
-});
 for (const id of ["#btn-anadir", "#btn-anadir-hero", "#btn-anadir-vacio"]) $(id).addEventListener("click", () => abrirForm({ tipo: "serie" }));
 
 // --- Túnel de portadas -----------------------------------------------------------
+// Una portada por anime (nunca las de sus temporadas) y, detrás, las populares que no tengo.
 function imagenesTunel() {
   const propias = [];
-  const vistas = new Set();
+  const urls = new Set();
+  const ids = new Set();
   for (const s of estado.series) {
-    for (const [url, extra] of [[s.poster_url, {}], ...(s.temporadas || []).map((t) => [t.poster_url, { temporada: t.nombre }])]) {
-      const u = urlSegura(url);
-      if (!u || vistas.has(u)) continue;
-      vistas.add(u);
-      propias.push({ url: u, color: colorSeguro(s.color), id: s.id, ...extra });
-    }
+    const u = urlSegura(s.poster_url);
+    if (!u || urls.has(u)) continue;
+    urls.add(u);
+    if (s.anilist_id) ids.add(Number(s.anilist_id));
+    propias.push({ url: u, color: colorSeguro(s.color), id: s.id });
   }
-  const faltan = Math.max(0, 18 - propias.length);
-  const extra = relleno.filter((r) => !vistas.has(r.url)).slice(0, faltan);
+  const extra = relleno.filter((r) => !urls.has(r.url) && !ids.has(Number(r.datos.anilist_id)));
   $("#tunel-ayuda").textContent = propias.length
     ? "Arrastra para explorar · pulsa una portada para abrirla"
     : "Arrastra para explorar · pulsa una portada para añadirla";
@@ -503,7 +511,7 @@ function actualizarTunel() {
 async function iniciarTunel() {
   const cont = $("#tunel");
   try {
-    relleno = (await anilist.tendencias(24)).map((m) => {
+    relleno = (await anilist.tendencias(50)).map((m) => {
       const d = anilist.aDatos(m);
       return { url: urlSegura(d.poster_url), color: colorSeguro(d.color), datos: d };
     }).filter((r) => r.url);
@@ -563,7 +571,7 @@ async function iniciar() {
     a.hidden = false;
   }
   await recargar(true);
-  fx.alEntrar(document.querySelectorAll(".seccion__cab, .chips, .pie"));
+  fx.alEntrar(document.querySelectorAll(".seccion__cab"));
   iniciarTunel();
 }
 
