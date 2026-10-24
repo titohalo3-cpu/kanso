@@ -29,6 +29,14 @@ export function buscar(texto, signal) {
   );
 }
 
+// Lo más popular ahora mismo: rellena el túnel mientras la lista tiene pocas portadas.
+export function tendencias(cuantos = 24) {
+  return consulta(
+    `query ($n: Int) { Page(perPage: $n) { media(sort: TRENDING_DESC, type: ANIME, isAdult: false) { ${CAMPOS} } } }`,
+    { n: cuantos },
+  );
+}
+
 // Convierte un resultado de AniList en los campos del formulario.
 export function aDatos(m) {
   const nombre = m.title.english || m.title.romaji;

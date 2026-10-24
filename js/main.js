@@ -2,8 +2,12 @@ import * as datos from "./datos.js";
 import * as anilist from "./anilist.js";
 import * as fx from "./animaciones.js";
 
+const reducido = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let tunel = null;
+let relleno = []; // portadas en tendencia para el túnel mientras la lista es corta
+
 const $ = (s, r = document) => r.querySelector(s);
-const estado = { series: [], texto: "", genero: null, orden: "recientes", editable: false, abierta: null };
+const estado = { series: [], texto: "", genero: null, orden: "recientes", editable: true, abierta: null };
 let contexto = null; // qué edita el formulario: { tipo: "serie" | "temporada", id?, serie_id? }
 
 // --- Utilidades --------------------------------------------------------------
@@ -73,8 +77,7 @@ function aviso(msg, tipo = "ok") {
 
 function mensajeError(e) {
   const m = e?.message || String(e);
-  if (e?.code === "42501" || /row-level security/i.test(m)) return "Sin permiso: tu usuario no está en anime_duenos.";
-  if (/Invalid login/i.test(m)) return "Correo o contraseña incorrectos.";
+  if (e?.code === "42501" || /row-level security/i.test(m)) return "Supabase no deja escribir: ejecuta supabase/sin-login.sql en el SQL Editor.";
   return `No se pudo guardar: ${m}`;
 }
 
@@ -143,15 +146,15 @@ function render({ animar = "no" } = {}) {
   rejilla.replaceChildren(...lista.map(tarjeta));
   rejilla.removeAttribute("aria-busy");
 
-  const vacio = $("#vacio");
-  vacio.hidden = lista.length > 0;
-  vacio.textContent = estado.series.length
+  $("#vacio").hidden = lista.length > 0;
+  $("#btn-anadir-vacio").hidden = estado.series.length > 0;
+  $("#vacio-texto").textContent = estado.series.length
     ? "Nada coincide con ese filtro."
-    : estado.editable ? "Tu lista está vacía. Pulsa «Añadir anime» para empezar." : "Todavía no hay animes en la lista.";
+    : "Aún no has apuntado ningún anime. Empieza por el último que terminaste.";
 
   const filtrando = estado.texto.trim() || estado.genero;
   const top = estado.series.filter((s) => notaDe(s) != null).sort(ORDENES.nota).slice(0, 10);
-  $("#sec-top").hidden = filtrando || top.length < 2;
+  $("#top").hidden = filtrando || top.length < 2;
   if (animar === "todo" || !$("#carril").children.length || animar === "no") {
     $("#carril").replaceChildren(...top.map((s, i) => tarjetaAncha(s, i + 1)));
     fx.barras($("#carril"));
@@ -180,6 +183,8 @@ function renderStats() {
   const temps = estado.series.reduce((a, s) => a + Math.max(1, s.temporadas?.length || 0), 0);
   const notas = estado.series.map(notaDe).filter((n) => n != null);
   const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
+  $('[data-palabra="series"]').textContent = estado.series.length === 1 ? "anime" : "animes";
+  $('[data-palabra="temporadas"]').textContent = temps === 1 ? "temporada" : "temporadas";
   fx.contar($('[data-stat="series"]'), estado.series.length, (v) => String(Math.round(v)));
   fx.contar($('[data-stat="temporadas"]'), temps, (v) => String(Math.round(v)));
   if (media == null) $('[data-stat="media"]').textContent = "–";
@@ -216,7 +221,7 @@ function filaTemporada(t, s) {
     h("div", { class: "temporada__texto" },
       h("span", { class: "temporada__num" }, `Temporada ${t.numero}${t.anio ? ` · ${t.anio}` : ""}`),
       h("span", { class: "temporada__nombre" }, t.nombre),
-      h("span", { class: "barra", "aria-hidden": "true" }, h("span", { class: "barra__pista" }, h("span", { class: "barra__relleno", style: { "--p": `${(n ?? 0) * 10}%` } }))),
+      h("span", { class: "barra-nota", "aria-hidden": "true" }, h("span", { class: "barra__pista" }, h("span", { class: "barra__relleno", style: { "--p": `${(n ?? 0) * 10}%` } }))),
     ),
     h("div", { class: "temporada__lado" },
       h("span", { class: "temporada__nota", "aria-label": `Nota ${fmt(n)}` }, fmt(n)),
@@ -417,37 +422,6 @@ async function borrarTemporada(t) {
   } catch (err) { aviso(mensajeError(err), "error"); }
 }
 
-// --- Sesión ------------------------------------------------------------------
-function actualizarSesion(sesion) {
-  const demo = datos.modo === "demo";
-  estado.editable = demo || Boolean(sesion);
-  $("#btn-anadir").hidden = !estado.editable;
-  const b = $("#btn-sesion");
-  b.hidden = demo;
-  b.textContent = sesion ? "Salir" : "Entrar";
-}
-
-$("#btn-sesion").addEventListener("click", async () => {
-  if (await datos.sesion()) {
-    await datos.salir();
-    return aviso("Sesión cerrada.");
-  }
-  fx.abrirModal($("#dlg-acceso"), $("#form-acceso"));
-  $("#a-email").focus();
-});
-
-$("#form-acceso").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const f = e.target;
-  if (!f.reportValidity()) return;
-  try {
-    await datos.entrar(f.email.value.trim(), f.clave.value);
-    f.reset();
-    fx.cerrarModal($("#dlg-acceso"), f);
-    aviso("Hola de nuevo. Ya puedes editar.");
-  } catch (err) { aviso(mensajeError(err), "error"); }
-});
-
 // --- Eventos generales ---------------------------------------------------------
 for (const dlg of document.querySelectorAll(".modal")) {
   const panel = dlg.querySelector(".modal__panel");
@@ -489,7 +463,77 @@ $("#generos").addEventListener("click", (e) => {
   estado.genero = b.dataset.genero || null;
   render({ animar: "filtro" });
 });
-$("#btn-anadir").addEventListener("click", () => abrirForm({ tipo: "serie" }));
+for (const id of ["#btn-anadir", "#btn-anadir-hero", "#btn-anadir-vacio"]) $(id).addEventListener("click", () => abrirForm({ tipo: "serie" }));
+
+// --- Túnel de portadas -----------------------------------------------------------
+function imagenesTunel() {
+  const propias = [];
+  const vistas = new Set();
+  for (const s of estado.series) {
+    for (const [url, extra] of [[s.poster_url, {}], ...(s.temporadas || []).map((t) => [t.poster_url, { temporada: t.nombre }])]) {
+      const u = urlSegura(url);
+      if (!u || vistas.has(u)) continue;
+      vistas.add(u);
+      propias.push({ url: u, color: colorSeguro(s.color), id: s.id, ...extra });
+    }
+  }
+  const faltan = Math.max(0, 18 - propias.length);
+  const extra = relleno.filter((r) => !vistas.has(r.url)).slice(0, faltan);
+  $("#tunel-ayuda").textContent = propias.length
+    ? "Arrastra para explorar · pulsa una portada para abrirla"
+    : "Arrastra para explorar · pulsa una portada para añadirla";
+  return [...propias, ...extra];
+}
+
+function elegirDelTunel(item) {
+  if (item.id != null) abrirDetalle(item.id);
+  else if (item.datos) abrirForm({ tipo: "serie" }, item.datos);
+}
+
+function pintarQuieto(items) {
+  $("#tunel-quieto").replaceChildren(...items.slice(0, 9).map((it) => h("li", { style: { background: it.color } }, imagen(it.url))));
+}
+
+function actualizarTunel() {
+  const items = imagenesTunel();
+  if (tunel) tunel.ponerImagenes(items);
+  else pintarQuieto(items);
+}
+
+async function iniciarTunel() {
+  const cont = $("#tunel");
+  try {
+    relleno = (await anilist.tendencias(24)).map((m) => {
+      const d = anilist.aDatos(m);
+      return { url: urlSegura(d.poster_url), color: colorSeguro(d.color), datos: d };
+    }).filter((r) => r.url);
+  } catch { relleno = []; }
+  try {
+    const { crearTunel } = await import("./tunel.js");
+    tunel = crearTunel(cont, { fondo: getComputedStyle(document.documentElement).getPropertyValue("--fondo").trim(), alElegir: elegirDelTunel, reducido });
+    cont.classList.add("con-webgl");
+  } catch (e) {
+    console.warn("[Kansō] Sin WebGL; el túnel se queda quieto.", e.message);
+    $("#tunel-pausa").hidden = true;
+  }
+  actualizarTunel();
+}
+
+$("#tunel").addEventListener("keydown", (e) => {
+  if (!tunel || !["ArrowLeft", "ArrowRight"].includes(e.key)) return;
+  e.preventDefault();
+  tunel.empujar(e.key === "ArrowRight" ? 6 : -6);
+});
+$("#tunel-pausa").addEventListener("click", (e) => {
+  if (!tunel) return;
+  const pausado = tunel.alternarPausa();
+  e.currentTarget.setAttribute("aria-pressed", String(pausado));
+  e.currentTarget.setAttribute("aria-label", pausado ? "Reanudar el túnel" : "Pausar el túnel");
+});
+if (reducido) {
+  $("#tunel-pausa").setAttribute("aria-pressed", "true");
+  $("#tunel-pausa").setAttribute("aria-label", "Reanudar el túnel");
+}
 
 // --- Arranque ------------------------------------------------------------------
 async function recargar(primera = false) {
@@ -500,6 +544,7 @@ async function recargar(primera = false) {
   }
   render({ animar: primera ? "todo" : "no" });
   renderStats();
+  actualizarTunel();
   const abierta = estado.series.find((s) => s.id === estado.abierta);
   if (abierta && $("#detalle").open) pintarDetalle(abierta);
 }
@@ -517,17 +562,9 @@ async function iniciar() {
     );
     a.hidden = false;
   }
-  actualizarSesion(await datos.sesion());
-  datos.alCambiarSesion((s) => {
-    const antes = estado.editable;
-    actualizarSesion(s);
-    if (antes !== estado.editable) {
-      render();
-      const abierta = estado.series.find((x) => x.id === estado.abierta);
-      if (abierta && $("#detalle").open) pintarDetalle(abierta);
-    }
-  });
   await recargar(true);
+  fx.alEntrar(document.querySelectorAll(".seccion__cab, .chips, .pie"));
+  iniciarTunel();
 }
 
 iniciar();

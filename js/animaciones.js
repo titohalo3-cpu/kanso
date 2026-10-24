@@ -21,27 +21,44 @@ const columnas = (nodos) => {
   return n === -1 ? nodos.length : n;
 };
 
-// Titular partido en letras que suben desde una máscara.
+// Titular partido en letras que suben desde una máscara. Respeta los <span> de color del titular.
 export function titular(el) {
-  const texto = el.textContent.trim();
-  el.setAttribute("aria-label", texto);
-  const palabras = texto.split(" ").flatMap((p, i, arr) => {
+  el.setAttribute("aria-label", el.textContent.trim().replace(/\s+/g, " "));
+  const partir = (texto) => texto.split(/(\s+)/).filter(Boolean).map((p) => {
+    if (/^\s+$/.test(p)) return document.createTextNode(" ");
     const palabra = document.createElement("span");
     palabra.className = "palabra";
-    palabra.setAttribute("aria-hidden", "true");
     for (const ch of p) {
       const l = document.createElement("span");
       l.className = "letra";
       l.textContent = ch;
       palabra.append(l);
     }
-    return i < arr.length - 1 ? [palabra, " "] : [palabra];
+    return palabra;
   });
-  el.replaceChildren(...palabras);
+  for (const nodo of [...el.childNodes]) {
+    if (nodo.nodeType === Node.TEXT_NODE) nodo.replaceWith(...partir(nodo.textContent));
+    else nodo.replaceChildren(...partir(nodo.textContent));
+  }
+  for (const n of el.children) n.setAttribute("aria-hidden", "true");
   if (!activo()) return;
   const letras = el.querySelectorAll(".letra");
-  A.utils.set(letras, { translateY: "105%", rotate: 6 });
-  A.animate(letras, { translateY: "0%", rotate: 0, duration: 1200, delay: A.stagger(32, { start: 120 }), ease: "outExpo" });
+  A.utils.set(letras, { translateY: "105%" });
+  A.animate(letras, { translateY: "0%", duration: 1300, delay: A.stagger(24, { start: 150 }), ease: "outExpo" });
+}
+
+// Cada bloque entra una vez al llegar a pantalla: sus hijos suben escalonados.
+export function alEntrar(bloques) {
+  if (!activo()) return;
+  const io = new IntersectionObserver((entradas) => {
+    for (const e of entradas) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      const hijos = [...e.target.children];
+      A.animate(hijos, { opacity: [0, 1], translateY: [28, 0], duration: 1000, delay: A.stagger(80), ease: "outExpo" });
+    }
+  }, { threshold: 0.2 });
+  bloques.forEach((b) => io.observe(b));
 }
 
 // Entrada escalonada de la rejilla, desde la primera tarjeta en diagonal.
@@ -85,7 +102,9 @@ export function contar(el, hasta, formato) {
   if (!activo()) return void (el.textContent = formato(hasta));
   const o = { v: 0 };
   el.textContent = formato(0);
-  A.animate(o, { v: hasta, duration: 1500, delay: 200, ease: "outExpo", onUpdate: () => (el.textContent = formato(o.v)) });
+  const anim = A.animate(o, { v: hasta, duration: 1500, delay: 200, ease: "outExpo", onUpdate: () => (el.textContent = formato(o.v)) });
+  // Si requestAnimationFrame se congela (pestaña en segundo plano), el valor final llega igual
+  setTimeout(() => { anim.pause(); el.textContent = formato(hasta); }, 1800);
 }
 
 // Modal que se abre como una ventana del tamaño de la tarjeta que se expande.

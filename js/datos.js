@@ -11,7 +11,8 @@ let sb = null;
 export let modo = "demo";
 
 export async function iniciar() {
-  if (!SUPABASE.url || !SUPABASE.clave) return modo;
+  // ?demo en la URL fuerza el modo demo (para probar sin tocar la base de datos)
+  if (!SUPABASE.url || !SUPABASE.clave || new URLSearchParams(location.search).has("demo")) return modo;
   try {
     const { createClient } = await import(SB_CDN);
     sb = createClient(SUPABASE.url, SUPABASE.clave);
@@ -111,24 +112,4 @@ export async function borrarTemporada(id) {
   const m = await local();
   for (const s of m.series) s.temporadas = s.temporadas.filter((t) => t.id !== id);
   persistir();
-}
-
-// --- Sesión (solo con Supabase) -------------------------------------------
-export async function sesion() {
-  if (!sb) return null;
-  const { data } = await sb.auth.getSession();
-  return data.session;
-}
-
-export function alCambiarSesion(cb) {
-  sb?.auth.onAuthStateChange((_evento, s) => cb(s));
-}
-
-export async function entrar(email, clave) {
-  const { error } = await sb.auth.signInWithPassword({ email, password: clave });
-  if (error) throw error;
-}
-
-export async function salir() {
-  await sb?.auth.signOut();
 }
