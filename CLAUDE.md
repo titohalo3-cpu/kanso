@@ -6,8 +6,8 @@ Registro personal de los animes que he visto: portada, nombre, nota y, si tiene 
 
 - Stack: HTML, CSS y JS sin build ni frameworks. Anime.js 4.0.2 y supabase-js 2.45.4 por CDN (jsdelivr, versión fija).
 - Servidor local: `preview_start` → `kanso` (puerto 5504, `.claude/launch.json`).
-- Publicación: GitHub Pages — URL: pendiente.
-- Supabase: proyecto de DBD Builds (`js/config.js`, clave anon). Esquema en `supabase/schema.sql`.
+- Publicación: GitHub Pages (repo `titohalo3-cpu/kanso`, rama `main`, raíz) — URL: https://titohalo3-cpu.github.io/kanso/
+- Supabase: proyecto propio de Kansō (`hxrnztktuzvmqzdkdmqs`, `js/config.js`, clave anon). Esquema en `supabase/schema.sql`.
 - Portadas: búsqueda en la API pública de AniList (`js/anilist.js`).
 
 ## Estructura
@@ -35,5 +35,5 @@ Lo que `probador-web` debe poder hacer para dar el proyecto por bueno:
 
 ## Estado
 
-- Hecho: web completa, esquema SQL y modo demo.
-- Siguiente: ejecutar `supabase/schema.sql`, crear usuario en Supabase Auth y añadirlo a `anime_duenos`.
+- Hecho: web completa, esquema SQL ejecutado en Supabase y publicada en GitHub Pages.
+- Siguiente: comprobar que el dueño (en `anime_duenos`) puede entrar y guardar animes.
