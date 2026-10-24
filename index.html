@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kansō · Mis animes vistos</title>
+  <meta name="description" content="Registro personal de los animes que he visto: portada, temporadas y nota de cada uno.">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0a0d">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23f43f2e'/%3E%3Ctext x='32' y='45' font-size='36' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E感%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://s4.anilist.co">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=Geist+Mono:wght@500;700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#principal">Saltar al contenido</a>
+
+  <div class="app">
+    <aside class="lateral" aria-label="Filtros y acciones">
+      <div class="marca">
+        <span class="marca__sello" aria-hidden="true">感</span>
+        <span class="marca__texto"><strong>Kansō</strong><small>mis animes vistos</small></span>
+      </div>
+
+      <div class="acciones">
+        <button class="boton boton--acento" id="btn-anadir" type="button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Añadir anime
+        </button>
+        <button class="boton boton--fantasma" id="btn-sesion" type="button" hidden>Entrar</button>
+      </div>
+
+      <label class="buscador">
+        <span class="sr">Buscar en mi lista</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="buscar" type="search" placeholder="Buscar en mi lista" autocomplete="off">
+      </label>
+
+      <div class="bloque">
+        <label class="bloque__titulo" for="orden">Ordenar por</label>
+        <div class="selector">
+          <select id="orden">
+            <option value="recientes">Añadidos recientemente</option>
+            <option value="nota">Mejor nota</option>
+            <option value="nombre">Nombre (A-Z)</option>
+            <option value="anio">Año de estreno</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bloque">
+        <h2 class="bloque__titulo">Géneros</h2>
+        <div class="chips" id="generos"></div>
+      </div>
+
+      <dl class="stats" id="stats">
+        <div><dt>Animes</dt><dd data-stat="series">0</dd></div>
+        <div><dt>Temporadas</dt><dd data-stat="temporadas">0</dd></div>
+        <div><dt>Nota media</dt><dd data-stat="media">–</dd></div>
+      </dl>
+    </aside>
+
+    <main class="principal" id="principal">
+      <p class="aviso" id="aviso" hidden></p>
+
+      <header class="cabecera">
+        <p class="cabecera__ante" id="contador">Cargando tu lista…</p>
+        <h1 class="cabecera__titulo" id="titulo">Lo que he visto</h1>
+      </header>
+
+      <section class="seccion" id="sec-top" aria-labelledby="t-top" hidden>
+        <div class="seccion__cab">
+          <h2 id="t-top">Mejor valorados</h2>
+          <div class="flechas">
+            <button type="button" class="flecha" data-carril="-1" aria-label="Ver anteriores">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+            </button>
+            <button type="button" class="flecha" data-carril="1" aria-label="Ver siguientes">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <ol class="carril" id="carril"></ol>
+      </section>
+
+      <section class="seccion" aria-labelledby="t-todos">
+        <div class="seccion__cab">
+          <h2 id="t-todos">Toda la lista</h2>
+        </div>
+        <ul class="rejilla" id="rejilla" aria-busy="true">
+          <li class="celda celda--esqueleto"></li><li class="celda celda--esqueleto"></li>
+          <li class="celda celda--esqueleto"></li><li class="celda celda--esqueleto"></li>
+          <li class="celda celda--esqueleto"></li><li class="celda celda--esqueleto"></li>
+        </ul>
+        <p class="vacio" id="vacio" hidden></p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Detalle de un anime con sus temporadas -->
+  <dialog class="modal" id="detalle" aria-labelledby="det-nombre">
+    <div class="modal__panel modal__panel--detalle" id="detalle-panel"></div>
+  </dialog>
+
+  <!-- Alta y edición de animes y temporadas -->
+  <dialog class="modal" id="dlg-form" aria-labelledby="form-titulo">
+    <form class="modal__panel formulario" id="form" novalidate data-tipo="serie">
+      <header class="formulario__cab">
+        <h2 id="form-titulo">Añadir anime</h2>
+        <button type="button" class="icono" data-cerrar aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="campo campo--busqueda">
+        <label for="f-buscar">Buscar portada en AniList</label>
+        <input id="f-buscar" type="search" placeholder="Ej.: Frieren" autocomplete="off" aria-describedby="f-buscar-ayuda" aria-controls="f-resultados">
+        <small id="f-buscar-ayuda">Elige un resultado y se rellenan nombre, portada y año.</small>
+        <ul class="resultados" id="f-resultados" aria-label="Resultados de AniList"></ul>
+      </div>
+
+      <div class="formulario__cuerpo">
+        <div class="formulario__preview" id="f-preview" aria-hidden="true"></div>
+        <div class="formulario__campos">
+          <div class="campo" data-solo="temporada">
+            <label for="f-numero">Nº de temporada</label>
+            <input id="f-numero" name="numero" type="number" min="0" max="99" inputmode="numeric">
+          </div>
+          <div class="campo campo--ancho">
+            <label for="f-nombre">Nombre</label>
+            <input id="f-nombre" name="nombre" required maxlength="200">
+          </div>
+          <div class="campo campo--ancho" data-solo="serie">
+            <label for="f-original">Título original</label>
+            <input id="f-original" name="titulo_original" maxlength="200">
+          </div>
+          <div class="campo">
+            <label for="f-nota">Nota (0-10)</label>
+            <input id="f-nota" name="nota" inputmode="decimal" placeholder="8,5" pattern="^(10([.,]0)?|[0-9]([.,][0-9])?)$" aria-describedby="f-nota-ayuda">
+            <small id="f-nota-ayuda" data-solo="serie">Vacía: media de sus temporadas.</small>
+          </div>
+          <div class="campo">
+            <label for="f-anio">Año</label>
+            <input id="f-anio" name="anio" type="number" min="1900" max="2100" inputmode="numeric">
+          </div>
+          <div class="campo campo--ancho" data-solo="serie">
+            <label for="f-generos">Géneros</label>
+            <input id="f-generos" name="generos" placeholder="Acción, Drama">
+          </div>
+          <div class="campo campo--ancho">
+            <label for="f-poster">URL de la portada vertical</label>
+            <input id="f-poster" name="poster_url" type="url" placeholder="https://…">
+          </div>
+          <div class="campo campo--ancho" data-solo="serie">
+            <label for="f-banner">URL de la imagen horizontal</label>
+            <input id="f-banner" name="banner_url" type="url" placeholder="https://…">
+          </div>
+          <input type="hidden" name="color">
+          <input type="hidden" name="anilist_id">
+        </div>
+      </div>
+
+      <footer class="formulario__pie">
+        <button type="button" class="boton boton--fantasma" data-cerrar>Cancelar</button>
+        <button type="submit" class="boton boton--acento" id="f-guardar">Guardar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Acceso del dueño (Supabase Auth) -->
+  <dialog class="modal" id="dlg-acceso" aria-labelledby="acceso-titulo">
+    <form class="modal__panel formulario formulario--estrecho" id="form-acceso">
+      <header class="formulario__cab">
+        <h2 id="acceso-titulo">Entrar para editar</h2>
+        <button type="button" class="icono" data-cerrar aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="campo">
+        <label for="a-email">Correo</label>
+        <input id="a-email" name="email" type="email" autocomplete="email" required>
+      </div>
+      <div class="campo">
+        <label for="a-clave">Contraseña</label>
+        <input id="a-clave" name="clave" type="password" autocomplete="current-password" required>
+      </div>
+      <footer class="formulario__pie">
+        <button type="submit" class="boton boton--acento">Entrar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" popover="manual"></div>
+</body>
+</html>
