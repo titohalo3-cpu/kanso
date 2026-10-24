@@ -34,6 +34,7 @@ Lo que `probador-web` debe poder hacer para dar el proyecto por bueno:
 ## Reglas del proyecto
 
 - Rutas relativas siempre (GitHub Pages sirve bajo `/<repo>/`).
+- Antes de cada publicación: `node tools/versionar.mjs` (pone `?v=` nuevo a `estilos.css` y a todos los módulos de `js/` vía import map, para que la caché de Pages no mezcle archivos viejos y nuevos). Si se añade un módulo nuevo a `js/`, entra solo.
 - Colores y espacios solo con las variables de `:root`.
 - Móvil primero: sin scroll horizontal a 375 px.
 - Datos del usuario siempre con `textContent` (helper `h()`), nunca `innerHTML`. URLs de imagen solo `https://`.
