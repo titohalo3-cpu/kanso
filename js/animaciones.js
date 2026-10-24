@@ -195,3 +195,20 @@ export function inclinacion(cont, selector) {
     if (t && !t.contains(e.relatedTarget)) ["--rx", "--ry"].forEach((p) => t.style.removeProperty(p));
   });
 }
+
+// La bola de añadir se deja atraer por el puntero cuando pasa cerca (efecto imán).
+export function bola(el) {
+  if (reducido.matches || !matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const RADIO = 150;
+  addEventListener("pointermove", (e) => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2 - (parseFloat(el.style.getPropertyValue("--imanx")) || 0);
+    const cy = r.top + r.height / 2 - (parseFloat(el.style.getPropertyValue("--imany")) || 0);
+    const dx = e.clientX - cx, dy = e.clientY - cy;
+    const d = Math.hypot(dx, dy);
+    const f = d < RADIO ? (1 - d / RADIO) * 0.45 : 0;
+    el.style.setProperty("--imanx", `${(dx * f).toFixed(1)}px`);
+    el.style.setProperty("--imany", `${(dy * f).toFixed(1)}px`);
+  }, { passive: true });
+  if (activo()) A.animate(el, { scale: [0, 1], duration: 900, delay: 900, ease: "outElastic(1, .6)" });
+}

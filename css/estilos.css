@@ -124,7 +124,6 @@ h1, h2, h3, h4, p { margin: 0; }
 .hero__titulo { font-size: clamp(3.6rem, 11vw, 11rem); font-weight: 500; line-height: 0.9; letter-spacing: -0.06em; white-space: nowrap; }
 .hero__tenue { color: var(--texto-tenue); }
 .hero__entrada { max-width: 46ch; }
-.hero__acciones { display: flex; align-items: center; justify-content: center; gap: var(--e-5); flex-wrap: wrap; }
 .palabra { display: inline-block; overflow: hidden; padding-bottom: 0.1em; margin-bottom: -0.1em; vertical-align: top; }
 .letra { display: inline-block; }
 
@@ -142,7 +141,8 @@ h1, h2, h3, h4, p { margin: 0; }
 
 .hero__pie {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--e-3);
-  padding: var(--e-3) var(--margen) var(--e-4); font-size: var(--t-peque); color: var(--texto-2);
+  /* A la derecha deja sitio a la bola de añadir */
+  padding: var(--e-3) calc(var(--margen) + 80px) var(--e-4) var(--margen); font-size: var(--t-peque); color: var(--texto-2);
 }
 .hero__stats { justify-self: end; text-align: right; }
 .hero__stats span { color: var(--texto); font-weight: 600; }
@@ -161,7 +161,7 @@ h1, h2, h3, h4, p { margin: 0; }
   /* En el móvil el hero no ocupa toda la pantalla: el túnel tiene su altura y la lista empieza antes */
   .hero { min-height: 0; padding-top: 96px; }
   .tunel { min-height: 0; height: 290px; }
-  .hero__pie { grid-template-columns: 1fr auto; }
+  .hero__pie { grid-template-columns: 1fr auto; padding-right: var(--margen); }
   .hero__pie > p:first-child { display: none; }
   .hero__stats { grid-row: 1; justify-self: start; text-align: left; }
 }
@@ -296,6 +296,34 @@ h1, h2, h3, h4, p { margin: 0; }
   transform-origin: center top;
 }
 .modal__cerrar { position: absolute; top: var(--e-3); right: var(--e-3); z-index: 5; background: var(--superficie); }
+
+/* Bola flotante para añadir: fija en la esquina y atraída por el puntero cuando se acerca */
+.bola {
+  position: fixed; right: var(--margen); bottom: var(--margen); z-index: 40;
+  width: 64px; height: 64px; padding: 0; border: 0; border-radius: 50%; background: none;
+  translate: var(--imanx, 0px) var(--imany, 0px);
+  transition: translate .5s var(--curva);
+}
+.bola__nucleo {
+  display: grid; place-items: center; width: 100%; height: 100%; border-radius: 50%;
+  background: var(--acento); color: var(--sobre-oscuro);
+  box-shadow: 0 18px 40px -14px rgb(255 74 28 / 0.75); /* taste-skill-ignore: la bola flota sobre la página */
+  animation: flotar 4.5s ease-in-out infinite;
+  transition: transform .5s var(--curva), background-color .25s;
+}
+.bola__nucleo svg { width: 26px; height: 26px; stroke-width: 2.4; transition: transform .6s var(--curva); }
+.bola:hover .bola__nucleo, .bola:focus-visible .bola__nucleo { transform: scale(1.08); background: #ff5f36; }
+.bola:hover .bola__nucleo svg, .bola:focus-visible .bola__nucleo svg { transform: rotate(90deg); }
+.bola:active .bola__nucleo { transform: scale(0.9); }
+.bola__texto {
+  position: absolute; right: calc(100% + var(--e-3)); top: 50%;
+  padding: var(--e-2) var(--e-4); border-radius: 999px; background: var(--oscuro); color: var(--sobre-oscuro);
+  font-size: var(--t-peque); font-weight: 500; white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translate(8px, -50%); transition: opacity .3s, transform .5s var(--curva);
+}
+.bola:hover .bola__texto, .bola:focus-visible .bola__texto { opacity: 1; transform: translate(0, -50%); }
+@keyframes flotar { 50% { transform: translateY(-5px); } }
+@media (max-width: 640px) { .bola { width: 58px; height: 58px; } }
 
 /* Visor 3D de portada (al pulsar el túnel) */
 .visor {

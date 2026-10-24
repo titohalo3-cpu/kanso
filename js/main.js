@@ -148,10 +148,9 @@ function render({ animar = "no" } = {}) {
   rejilla.removeAttribute("aria-busy");
 
   $("#vacio").hidden = lista.length > 0;
-  $("#btn-anadir-vacio").hidden = estado.series.length > 0;
   $("#vacio-texto").textContent = estado.series.length
     ? "Nada coincide con ese filtro."
-    : "Aún no has apuntado ningún anime. Empieza por el último que terminaste.";
+    : "Aún no has apuntado ningún anime. Pulsa la bola naranja para añadir el último que terminaste.";
 
   const filtrando = estado.texto.trim();
   const top = estado.series.filter((s) => notaDe(s) != null).sort(ORDENES.nota).slice(0, 10);
@@ -471,7 +470,7 @@ $("#orden").addEventListener("change", (e) => {
   estado.orden = e.target.value;
   render({ animar: "filtro" });
 });
-for (const id of ["#btn-anadir", "#btn-anadir-hero", "#btn-anadir-vacio"]) $(id).addEventListener("click", () => abrirForm({ tipo: "serie" }));
+$("#bola").addEventListener("click", () => abrirForm({ tipo: "serie" }));
 
 // --- Túnel de portadas -----------------------------------------------------------
 // Una portada por anime (nunca las de sus temporadas) y, detrás, las populares que no tengo.
@@ -603,6 +602,7 @@ async function recargar(primera = false) {
 async function iniciar() {
   await Promise.all([fx.cargar(), datos.iniciar()]);
   fx.titular($("#titulo"));
+  fx.bola($("#bola"));
   if (datos.modo === "demo") {
     const a = $("#aviso");
     a.replaceChildren(

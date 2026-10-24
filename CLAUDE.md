@@ -28,6 +28,7 @@ Lo que `probador-web` debe poder hacer para dar el proyecto por bueno:
 - Filtrar por texto y cambiar el orden.
 - Pulsar un anime con varias temporadas (fondo desenfocado) y pasar sus cartas de temporada con un toque o arrastrando.
 - Arrastrar el túnel y pulsar una portada: abre el visor 3D, girar la portada 360°.
+- La bola naranja fija (abajo a la derecha) abre el alta de un anime; no hay más botones de añadir.
 - Añadir un anime buscando la portada en AniList y añadirle una temporada.
 
 ## Reglas del proyecto

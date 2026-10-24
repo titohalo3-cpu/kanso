@@ -24,7 +24,6 @@
       <span class="marca__sello" aria-hidden="true">感</span>
       <span class="marca__nombre">Kansō</span>
     </a>
-    <button class="boton boton--oscuro barra__accion" id="btn-anadir" type="button">Añadir anime</button>
   </header>
 
   <main>
@@ -32,13 +31,6 @@
       <div class="hero__texto">
         <h1 class="hero__titulo" id="titulo">Anime<span class="hero__tenue">Match</span></h1>
         <p class="hero__entrada">Mi diario de anime: cada serie con su portada, sus temporadas y la nota que le puse al terminarla.</p>
-        <div class="hero__acciones">
-          <button class="boton boton--oscuro" id="btn-anadir-hero" type="button">
-            Añadir anime
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>
-          </button>
-          <a class="enlace" href="#lista">Ver la lista</a>
-        </div>
       </div>
 
       <div class="tunel" id="tunel" tabindex="0" aria-label="Túnel de portadas. Arrastra o usa las flechas para moverlo y pulsa una portada para abrirla.">
@@ -105,11 +97,18 @@
       </ul>
       <div class="vacio" id="vacio" hidden>
         <p id="vacio-texto"></p>
-        <button class="boton boton--oscuro" type="button" id="btn-anadir-vacio">Añadir el primero</button>
       </div>
     </section>
   </main>
 
+
+  <!-- Bola flotante: siempre a mano para añadir un anime -->
+  <button class="bola" id="bola" type="button" aria-label="Añadir anime">
+    <span class="bola__nucleo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    </span>
+    <span class="bola__texto" aria-hidden="true">Añadir anime</span>
+  </button>
 
   <!-- Detalle de un anime con sus temporadas -->
   <dialog class="modal" id="detalle" aria-labelledby="det-nombre">
