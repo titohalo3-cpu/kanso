@@ -9,8 +9,8 @@ const OPCIONES = {
   crucero: 0.9,        // velocidad sin tocar nada (unidades/s)
   pliegue: 0.55,       // cuánto se doblan con la velocidad
   franja: 0.006,       // separación de colores con la velocidad
-  bruma: [16, 40],     // distancias entre las que se funden con el fondo
-  A: 6.6, B: 30, C: 2.6, // forma de la pista: x = A·sen φ, z = C − B·cos φ
+  bruma: [14, 30],     // distancias entre las que se funden un poco con el fondo
+  A: 7.4, B: 14, C: 2.4, // forma de la pista: x = A·sen φ, z = C − B·cos φ (B corto = pasillo cercano)
   phiMax: 1.95,
 };
 
@@ -60,7 +60,7 @@ const FRAGMENT = /* glsl */ `
       col.g = texture2D(uTex, uv).g;
       col.b = texture2D(uTex, uv - vec2(uShift, 0.0)).b;
     }
-    float haze = smoothstep(uHaze.x, uHaze.y, vDepth) * 0.6;
+    float haze = smoothstep(uHaze.x, uHaze.y, vDepth) * 0.28;
     col = mix(col, uGround, haze);
     gl_FragColor = vec4(col, uOpacity);
     #include <colorspace_fragment>
@@ -78,7 +78,7 @@ export function crearTunel(contenedor, { fondo = "#ecebe6", alElegir = () => {},
   const escena = new THREE.Scene();
   const camara = new THREE.PerspectiveCamera(34, 2, 0.1, 100);
   camara.position.set(0, 0.25, 8);
-  camara.lookAt(0, 0, -12);
+  camara.lookAt(0, 0, -6);
 
   const suelo = new THREE.Color(fondo);
   const cargador = new THREE.TextureLoader();

@@ -16,7 +16,7 @@ Registro personal de los animes que he visto: portada, nombre, nota y, si tiene 
 - `css/estilos.css` — tokens en `:root` (oscuro y claro) y estilos. Dirección visual en `DESIGN.md`.
 - `js/main.js` — render, filtros, detalle, formularios y sesión.
 - `js/datos.js` — Supabase o, si no hay tablas (o con `?demo` en la URL), modo demo en localStorage (`kanso:demo:v1`).
-- `js/tunel.js` — túnel WebGL de portadas (three.js), una por anime, sin repetir.
+- `js/tunel.js` — túnel WebGL de portadas (three.js): mis animes salen cada pocas portadas; el resto son 50 populares de AniList que cambian cada día (`anilist.delDia`, ciclo de 40 días).
 - `js/visor.js` — visor 3D a pantalla completa de una portada del túnel (se gira 360° arrastrando).
 - `js/apilado.js` — pila de cartas de temporadas en la ficha (adaptación de «Card swap» de bencho.dev).
 - `js/animaciones.js` — todo el movimiento; respeta `prefers-reduced-motion`.

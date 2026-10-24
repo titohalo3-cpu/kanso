@@ -5,7 +5,7 @@ import { crearApilado } from "./apilado.js";
 
 const reducido = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let tunel = null;
-let relleno = []; // portadas en tendencia para el túnel mientras la lista es corta
+let relleno = []; // portadas del día de AniList que acompañan a las mías en el túnel
 
 const $ = (s, r = document) => r.querySelector(s);
 const estado = { series: [], texto: "", orden: "recientes", editable: true, abierta: null };
@@ -473,7 +473,7 @@ $("#orden").addEventListener("change", (e) => {
 $("#bola").addEventListener("click", () => abrirForm({ tipo: "serie" }));
 
 // --- Túnel de portadas -----------------------------------------------------------
-// Una portada por anime (nunca las de sus temporadas) y, detrás, las populares que no tengo.
+// Una portada por anime (nunca las de sus temporadas), mezclada con las populares del día que no tengo.
 function imagenesTunel() {
   const propias = [];
   const urls = new Set();
@@ -489,7 +489,17 @@ function imagenesTunel() {
   $("#tunel-ayuda").textContent = propias.length
     ? "Arrastra para explorar · pulsa una portada para abrirla"
     : "Arrastra para explorar · pulsa una portada para añadirla";
-  return [...propias, ...extra];
+  // Mis animes vuelven cada pocas portadas; las del día salen una sola vez
+  if (!propias.length) return extra;
+  if (!extra.length) return propias;
+  const cada = propias.length > 6 ? 2 : 3;
+  const mezcla = [];
+  let p = 0;
+  extra.forEach((r, i) => {
+    if (i % cada === 0) mezcla.push(propias[p++ % propias.length]);
+    mezcla.push(r);
+  });
+  return mezcla;
 }
 
 // Al pulsar una portada del túnel se abre el visor 3D (nunca el formulario de alta)
@@ -553,7 +563,7 @@ function actualizarTunel() {
 async function iniciarTunel() {
   const cont = $("#tunel");
   try {
-    relleno = (await anilist.tendencias(50)).map((m) => {
+    relleno = (await anilist.delDia()).map((m) => {
       const d = anilist.aDatos(m);
       return { url: urlSegura(d.poster_url), color: colorSeguro(d.color), datos: d };
     }).filter((r) => r.url);

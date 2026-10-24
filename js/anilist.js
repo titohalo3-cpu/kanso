@@ -29,11 +29,13 @@ export function buscar(texto, signal) {
   );
 }
 
-// Lo más popular ahora mismo: rellena el túnel mientras la lista tiene pocas portadas.
-export function tendencias(cuantos = 24) {
+// Portadas del día para el túnel: cada día una página distinta de los animes más populares,
+// así que cambian a diario por otros que no han salido (el ciclo da la vuelta cada 40 días).
+export function delDia(fecha = new Date()) {
+  const dia = Math.floor((fecha.getTime() - fecha.getTimezoneOffset() * 60000) / 86400000);
   return consulta(
-    `query ($n: Int) { Page(perPage: $n) { media(sort: TRENDING_DESC, type: ANIME, isAdult: false) { ${CAMPOS} } } }`,
-    { n: cuantos },
+    `query ($p: Int) { Page(page: $p, perPage: 50) { media(sort: POPULARITY_DESC, type: ANIME, isAdult: false, format_in: [TV, MOVIE, ONA]) { ${CAMPOS} } } }`,
+    { p: (dia % 40) + 1 },
   );
 }
 
