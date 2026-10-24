@@ -285,7 +285,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .modal[open] { display: grid; place-items: center; }
 .modal:focus-visible, .modal__panel:focus-visible { outline: none; }
 /* Al abrir un anime, la página queda detrás desenfocada */
-.modal::backdrop { background: var(--velo); backdrop-filter: blur(14px) saturate(0.9); -webkit-backdrop-filter: blur(14px) saturate(0.9); }
+.modal::backdrop { background: var(--velo); backdrop-filter: blur(14px) saturate(0.9); -webkit-backdrop-filter: blur(14px) saturate(0.9); } /* taste-skill-ignore: desenfoque pedido por Pablo */
 .modal[open]::backdrop { animation: velo .35s ease-out; }
 @keyframes velo { from { opacity: 0; } }
 .modal__panel {
@@ -296,6 +296,51 @@ h1, h2, h3, h4, p { margin: 0; }
   transform-origin: center top;
 }
 .modal__cerrar { position: absolute; top: var(--e-3); right: var(--e-3); z-index: 5; background: var(--superficie); }
+
+/* Visor 3D de portada (al pulsar el túnel) */
+.visor {
+  --c: #2a2a33;
+  width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; overflow: hidden;
+  background: color-mix(in srgb, var(--c) 38%, #0b0b0d); color: var(--sobre-oscuro);
+}
+.visor[open] { display: block; animation: velo .4s ease-out; }
+.visor::backdrop { background: var(--velo); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); } /* taste-skill-ignore: desenfoque pedido por Pablo */
+.visor:focus-visible { outline: none; }
+.visor__escena { position: absolute; inset: 0; cursor: grab; }
+.visor__escena.girando { cursor: grabbing; }
+.visor__escena:focus-visible { outline: 2px solid var(--acento); outline-offset: -6px; }
+.visor__canvas { display: block; width: 100%; height: 100%; }
+.visor__quieta { display: grid; place-items: center; height: 100%; }
+.visor__quieta img { height: min(70vh, 560px); width: auto; border-radius: 14px; }
+.visor__cerrar { position: absolute; top: var(--e-4); right: var(--margen); z-index: 3; background: rgb(255 255 255 / 0.14); color: var(--sobre-oscuro); }
+.visor__cerrar:hover { background: rgb(255 255 255 / 0.24); }
+.visor__texto {
+  position: absolute; left: var(--margen); bottom: clamp(24px, 8vh, 96px); z-index: 2;
+  display: grid; gap: var(--e-3); max-width: min(34vw, 460px); pointer-events: none;
+}
+.visor__texto a, .visor__texto button { pointer-events: auto; }
+.visor__nombre { font-size: clamp(2.4rem, 4.6vw, 5rem); font-weight: 700; line-height: 0.92; letter-spacing: -0.05em; text-wrap: balance; }
+.visor__origen { color: rgb(255 255 255 / 0.7); }
+.visor__nota { display: flex; align-items: baseline; gap: var(--e-3); margin-top: var(--e-3); }
+.visor__nota span:first-child { font-size: clamp(3.4rem, 6vw, 6rem); font-weight: 700; line-height: 0.9; letter-spacing: -0.06em; }
+.visor__nota span:last-child { color: rgb(255 255 255 / 0.7); }
+.visor__meta { max-width: 40ch; }
+.visor__acciones { display: flex; flex-wrap: wrap; gap: var(--e-2); margin-top: var(--e-3); }
+.visor__acciones .boton--claro { background: var(--sobre-oscuro); color: var(--texto); }
+.visor__acciones .boton--claro:hover { background: var(--hundido); }
+.visor__pista {
+  position: absolute; left: 50%; bottom: var(--e-5); z-index: 2; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: var(--e-2); padding: var(--e-2) var(--e-4);
+  border-radius: 999px; background: rgb(255 255 255 / 0.12); font-size: var(--t-peque); white-space: nowrap; pointer-events: none;
+}
+.visor__pista svg { width: 16px; height: 16px; }
+@media (max-width: 760px) {
+  .visor__escena { inset: 0 0 42% 0; }
+  .visor__texto { left: var(--margen); right: var(--margen); bottom: 76px; max-width: none; gap: var(--e-2); }
+  .visor__nombre { font-size: clamp(2rem, 9vw, 2.8rem); }
+  .visor__nota span:first-child { font-size: 3rem; }
+  .visor__pista { top: calc(58% + 4px); bottom: auto; }
+}
 
 /* Detalle */
 .det__banner { position: relative; aspect-ratio: 16 / 6; min-height: 160px; overflow: hidden; background: var(--c); }

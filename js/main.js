@@ -437,12 +437,12 @@ async function borrarTemporada(t) {
 }
 
 // --- Eventos generales ---------------------------------------------------------
-for (const dlg of document.querySelectorAll(".modal")) {
+for (const dlg of document.querySelectorAll(".modal, .visor")) {
   const panel = dlg.querySelector(".modal__panel");
-  const cerrar = () => (dlg.id === "detalle" ? cerrarDetalle() : fx.cerrarModal(dlg, panel));
+  const cerrar = () => (dlg.id === "detalle" ? cerrarDetalle() : dlg.id === "visor" ? cerrarVisor() : fx.cerrarModal(dlg, panel));
   dlg.addEventListener("cancel", (e) => { e.preventDefault(); cerrar(); });
   dlg.addEventListener("click", (e) => {
-    if (e.target === dlg || e.target.closest("[data-cerrar]")) cerrar();
+    if ((e.target === dlg && dlg.id !== "visor") || e.target.closest("[data-cerrar]")) cerrar();
   });
 }
 
@@ -493,9 +493,52 @@ function imagenesTunel() {
   return [...propias, ...extra];
 }
 
-function elegirDelTunel(item) {
-  if (item.id != null) abrirDetalle(item.id);
-  else if (item.datos) abrirForm({ tipo: "serie" }, item.datos);
+// Al pulsar una portada del túnel se abre el visor 3D (nunca el formulario de alta)
+let visor = null;
+async function elegirDelTunel(item) {
+  const s = item.id != null ? estado.series.find((x) => x.id === item.id) : null;
+  const d = s || item.datos;
+  if (!d) return;
+  const n = s ? notaDe(s) : null;
+  const temps = s?.temporadas || [];
+  const meta = [d.anio, (d.generos || []).join(", ")].filter(Boolean).join(" · ");
+  const dlg = $("#visor");
+  dlg.style.setProperty("--c", colorSeguro(d.color));
+  $("#visor-nombre").textContent = d.nombre;
+  $("#visor-origen").textContent = s
+    ? (temps.length > 1 ? `En mi lista · ${temps.length} temporadas` : "En mi lista")
+    : "Popular ahora en AniList";
+  $("#visor-nota").textContent = fmt(n);
+  $("#visor-nota").parentElement.hidden = !s;
+  if (!s) $("#visor-origen").textContent = "Popular ahora en AniList · aún no la he visto";
+  $("#visor-meta").textContent = meta;
+  const enlaceAniList = d.anilist_id && h("a", { class: "boton boton--claro", href: `https://anilist.co/anime/${Number(d.anilist_id)}`, target: "_blank", rel: "noopener" }, "Ver en AniList", svg('<path d="M7 17 17 7M8 7h9v9"/>'));
+  $("#visor-acciones").replaceChildren(...[
+    s && h("button", { type: "button", class: "boton boton--claro", onclick: () => { cerrarVisor(); abrirDetalle(s.id); } }, "Ver ficha completa"),
+    enlaceAniList,
+  ].filter(Boolean));
+  dlg.showModal();
+  fx.detalle(dlg, fmt);
+  $("#visor-escena").focus({ preventScroll: true });
+  try {
+    if (!visor) visor = (await import("./visor.js")).crearVisor($("#visor-escena"));
+    visor.mostrar({
+      nombre: d.nombre,
+      poster_url: urlSegura(d.poster_url),
+      color: colorSeguro(d.color),
+      nota: s ? fmt(n) : null,
+      meta,
+      temporadas: temps.map((t) => `Temporada ${t.numero} · ${fmt(t.nota == null ? null : Number(t.nota))}`),
+    });
+  } catch (e) {
+    console.warn("[Kansō] Sin visor 3D; muestro la portada quieta.", e.message);
+    $("#visor-escena").replaceChildren(h("div", { class: "visor__quieta" }, imagen(d.poster_url)));
+  }
+}
+
+function cerrarVisor() {
+  visor?.parar();
+  $("#visor").close();
 }
 
 function pintarQuieto(items) {
