@@ -1,13 +1,13 @@
 # Kansō
 
-Registro personal de los animes que he visto: portada, nombre, nota y, si tiene varias, sus temporadas con su nota. Datos en Supabase.
+Registro personal de los animes y películas de anime que he visto: portada, nombre, nota y, si un anime tiene varias, sus temporadas con su nota. Datos en Supabase.
 
 ## Datos
 
 - Stack: HTML, CSS y JS sin build ni frameworks. Anime.js 4.0.2, three.js 0.180.0 (import map) y supabase-js 2.45.4 por CDN (jsdelivr, versión fija).
 - Servidor local: `preview_start` → `kanso` (puerto 5504, `.claude/launch.json`).
 - Publicación: GitHub Pages (repo `titohalo3-cpu/kanso`, rama `main`, raíz) — URL: https://titohalo3-cpu.github.io/kanso/
-- Supabase: proyecto propio de Kansō (`hxrnztktuzvmqzdkdmqs`, `js/config.js`, clave anon). Esquema en `supabase/schema.sql` + `supabase/sin-login.sql` (uso personal: la clave anon puede escribir, sin inicio de sesión).
+- Supabase: proyecto propio de Kansō (`hxrnztktuzvmqzdkdmqs`, `js/config.js`, clave anon). Esquema en `supabase/schema.sql` + `supabase/sin-login.sql` + `supabase/peliculas.sql` (columna `tipo`: `serie` o `pelicula`) (uso personal: la clave anon puede escribir, sin inicio de sesión).
 - Portadas: búsqueda en la API pública de AniList (`js/anilist.js`).
 
 ## Estructura
@@ -25,11 +25,12 @@ Registro personal de los animes que he visto: portada, nombre, nota y, si tiene 
 
 Lo que `probador-web` debe poder hacer para dar el proyecto por bueno:
 - Ver la rejilla de pósters y el carril de mejor valorados.
-- Filtrar por texto y cambiar el orden.
+- Filtrar por texto, por Todo / Animes / Películas y cambiar el orden.
 - Pulsar un anime con varias temporadas (fondo desenfocado) y pasar sus cartas de temporada con un toque o arrastrando.
 - Arrastrar el túnel y pulsar una portada: abre el visor 3D, girar la portada 360°.
 - La bola naranja fija (abajo a la derecha) abre el alta de un anime; no hay más botones de añadir.
 - Añadir un anime buscando la portada en AniList y añadirle una temporada.
+- Añadir una película (selector Anime / Película en el formulario; la búsqueda se limita a películas). Las películas no tienen temporadas.
 
 ## Reglas del proyecto
 

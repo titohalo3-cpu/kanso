@@ -12,9 +12,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://s4.anilist.co" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/estilos.css?v=202610242248">
-  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","./js/anilist.js":"./js/anilist.js?v=202610242248","./js/animaciones.js":"./js/animaciones.js?v=202610242248","./js/apilado.js":"./js/apilado.js?v=202610242248","./js/config.js":"./js/config.js?v=202610242248","./js/datos.js":"./js/datos.js?v=202610242248","./js/main.js":"./js/main.js?v=202610242248","./js/tunel.js":"./js/tunel.js?v=202610242248","./js/visor.js":"./js/visor.js?v=202610242248"}}</script>
-  <script type="module" src="js/main.js?v=202610242248"></script>
+  <link rel="stylesheet" href="css/estilos.css?v=20261025105655">
+  <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/","./js/anilist.js":"./js/anilist.js?v=20261025105655","./js/animaciones.js":"./js/animaciones.js?v=20261025105655","./js/apilado.js":"./js/apilado.js?v=20261025105655","./js/config.js":"./js/config.js?v=20261025105655","./js/datos.js":"./js/datos.js?v=20261025105655","./js/main.js":"./js/main.js?v=20261025105655","./js/tunel.js":"./js/tunel.js?v=20261025105655","./js/visor.js":"./js/visor.js?v=20261025105655"}}</script>
+  <script type="module" src="js/main.js?v=20261025105655"></script>
 </head>
 <body>
   <a class="saltar" href="#lista">Saltar a la lista</a>
@@ -43,7 +43,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true" class="pausa__icono-pausa"><path d="M9 6v12M15 6v12"/></svg>
           <svg viewBox="0 0 24 24" aria-hidden="true" class="pausa__icono-play"><path d="M8 5v14l11-7Z"/></svg>
         </button>
-        <p class="hero__stats" id="stats"><span data-stat="series">0</span> <i data-palabra="series">animes</i> · <span data-stat="temporadas">0</span> <i data-palabra="temporadas">temporadas</i> · media <span data-stat="media">–</span></p>
+        <p class="hero__stats" id="stats"><span data-stat="series">0</span> <i data-palabra="series">animes</i> · <span data-stat="temporadas">0</span> <i data-palabra="temporadas">temporadas</i> · <span data-stat="peliculas">0</span> <i data-palabra="peliculas">películas</i> · media <span data-stat="media">–</span></p>
       </div>
     </section>
 
@@ -74,6 +74,11 @@
           <p id="contador">Cargando tu lista…</p>
         </div>
         <div class="herramientas">
+          <div class="segmentado" id="vistas" role="group" aria-label="Qué ver">
+            <button type="button" data-vista="todo" aria-pressed="true">Todo</button>
+            <button type="button" data-vista="serie" aria-pressed="false">Animes</button>
+            <button type="button" data-vista="pelicula" aria-pressed="false">Películas</button>
+          </div>
           <label class="buscador">
             <span class="sr">Buscar en mi lista</span>
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -103,11 +108,11 @@
 
 
   <!-- Bola flotante: siempre a mano para añadir un anime -->
-  <button class="bola" id="bola" type="button" aria-label="Añadir anime">
+  <button class="bola" id="bola" type="button" aria-label="Añadir anime o película">
     <span class="bola__nucleo">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     </span>
-    <span class="bola__texto" aria-hidden="true">Añadir anime</span>
+    <span class="bola__texto" aria-hidden="true">Añadir anime o película</span>
   </button>
 
   <!-- Detalle de un anime con sus temporadas -->
@@ -134,7 +139,7 @@
     </p>
   </dialog>
 
-  <!-- Alta y edición de animes y temporadas -->
+  <!-- Alta y edición de animes, películas y temporadas -->
   <dialog class="modal" id="dlg-form" aria-labelledby="form-titulo">
     <form class="modal__panel formulario" id="form" novalidate data-tipo="serie">
       <header class="formulario__cab">
@@ -143,6 +148,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
         </button>
       </header>
+
+      <fieldset class="segmentado" data-solo="serie">
+        <legend class="sr">Qué vas a añadir</legend>
+        <label><input type="radio" name="tipo" value="serie" checked><span>Anime</span></label>
+        <label><input type="radio" name="tipo" value="pelicula"><span>Película</span></label>
+      </fieldset>
 
       <div class="campo campo--busqueda">
         <label for="f-buscar">Buscar en AniList</label>
@@ -169,7 +180,7 @@
           <div class="campo">
             <label for="f-nota">Nota (0-10)</label>
             <input id="f-nota" name="nota" inputmode="decimal" placeholder="8,5" pattern="^(10([.,]0)?|[0-9]([.,][0-9])?)$" aria-describedby="f-nota-ayuda">
-            <small id="f-nota-ayuda" data-solo="serie">Vacía: media de sus temporadas.</small>
+            <small id="f-nota-ayuda" data-solo="serie" data-obra="serie">Vacía: media de sus temporadas.</small>
           </div>
           <div class="campo">
             <label for="f-anio">Año</label>

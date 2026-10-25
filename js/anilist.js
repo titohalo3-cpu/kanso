@@ -21,10 +21,11 @@ async function consulta(query, variables, signal) {
   return data?.Page?.media ?? [];
 }
 
-export function buscar(texto, signal) {
+// soloPeliculas: limita la búsqueda a películas (formato MOVIE)
+export function buscar(texto, signal, soloPeliculas = false) {
   return consulta(
-    `query ($s: String) { Page(perPage: 8) { media(search: $s, type: ANIME, sort: SEARCH_MATCH) { ${CAMPOS} } } }`,
-    { s: texto },
+    `query ($s: String, $f: [MediaFormat]) { Page(perPage: 8) { media(search: $s, type: ANIME, sort: SEARCH_MATCH, format_in: $f) { ${CAMPOS} } } }`,
+    { s: texto, f: soloPeliculas ? ["MOVIE"] : null },
     signal,
   );
 }
@@ -51,6 +52,7 @@ export function aDatos(m) {
     anio: m.seasonYear || m.startDate?.year || "",
     generos: (m.genres || []).slice(0, 3).map((g) => GENEROS[g] || g),
     anilist_id: m.id,
+    tipo: m.format === "MOVIE" ? "pelicula" : "serie",
   };
 }
 

@@ -8,7 +8,8 @@ let tunel = null;
 let relleno = []; // portadas del día de AniList que acompañan a las mías en el túnel
 
 const $ = (s, r = document) => r.querySelector(s);
-const estado = { series: [], texto: "", orden: "recientes", editable: true, abierta: null };
+const estado = { series: [], texto: "", orden: "recientes", vista: "todo", editable: true, abierta: null };
+const esPeli = (s) => s.tipo === "pelicula";
 let contexto = null; // qué edita el formulario: { tipo: "serie" | "temporada", id?, serie_id? }
 
 // --- Utilidades --------------------------------------------------------------
@@ -79,6 +80,7 @@ function aviso(msg, tipo = "ok") {
 function mensajeError(e) {
   const m = e?.message || String(e);
   if (e?.code === "42501" || /row-level security/i.test(m)) return "Supabase no deja escribir: ejecuta supabase/sin-login.sql en el SQL Editor.";
+  if (/'tipo' column/i.test(m)) return "Falta la columna de películas: ejecuta supabase/peliculas.sql en el SQL Editor.";
   return `No se pudo guardar: ${m}`;
 }
 
@@ -89,10 +91,10 @@ function tarjeta(s) {
   return h("li", { class: "celda" },
     h("button", {
       type: "button", class: "tarjeta", style: { "--c": colorSeguro(s.color) }, dataset: { id: s.id },
-      "aria-label": `${s.nombre}. Nota ${fmt(n)}${temps > 1 ? `. ${temps} temporadas` : ""}`,
+      "aria-label": `${s.nombre} — nota ${fmt(n)}${temps > 1 ? `. ${temps} temporadas` : ""}`,
     },
       imagen(s.poster_url, "tarjeta__img"),
-      temps > 1 && h("span", { class: "tarjeta__temps" }, `${temps} temp.`),
+      esPeli(s) ? h("span", { class: "tarjeta__temps" }, "Película") : temps > 1 && h("span", { class: "tarjeta__temps" }, `${temps} temp.`),
       h("span", { class: "tarjeta__info" },
         h("span", { class: "tarjeta__nombre" }, s.nombre),
         h("span", { class: "tarjeta__meta" }, intercalar([
@@ -116,7 +118,7 @@ function tarjetaAncha(s, puesto) {
         imagen(banner || s.poster_url, banner ? "ancha__img" : "ancha__img ancha__img--poster"),
         h("span", { class: "ancha__puesto", "aria-hidden": "true" }, h("small", {}, "TOP"), String(puesto)),
         h("span", { class: "ancha__nombre", "aria-hidden": "true" }, s.nombre),
-        temps > 1 && h("span", { class: "ancha__pill" }, `${temps} temporadas`),
+        esPeli(s) ? h("span", { class: "ancha__pill" }, "Película") : temps > 1 && h("span", { class: "ancha__pill" }, `${temps} temporadas`),
       ),
       h("span", { class: "ancha__pie", "aria-hidden": "true" },
         h("span", { class: "ancha__barra" }, h("span", { class: "ancha__relleno", style: { "--p": `${(n ?? 0) * 10}%` } })),
@@ -137,6 +139,7 @@ const ORDENES = {
 function filtradas() {
   const t = normal(estado.texto.trim());
   return estado.series
+    .filter((s) => estado.vista === "todo" || (estado.vista === "pelicula") === esPeli(s))
     .filter((s) => (!t || normal(`${s.nombre} ${s.titulo_original || ""}`).includes(t)))
     .sort(ORDENES[estado.orden]);
 }
@@ -150,9 +153,9 @@ function render({ animar = "no" } = {}) {
   $("#vacio").hidden = lista.length > 0;
   $("#vacio-texto").textContent = estado.series.length
     ? "Nada coincide con ese filtro."
-    : "Aún no has apuntado ningún anime. Pulsa la bola naranja para añadir el último que terminaste.";
+    : "Aún no has apuntado nada. Pulsa la bola naranja para añadir el último anime o película que terminaste.";
 
-  const filtrando = estado.texto.trim();
+  const filtrando = estado.texto.trim() || estado.vista !== "todo";
   const top = estado.series.filter((s) => notaDe(s) != null).sort(ORDENES.nota).slice(0, 10);
   $("#top").hidden = filtrando || top.length < 2;
   if (animar === "todo" || !$("#carril").children.length || animar === "no") {
@@ -160,7 +163,11 @@ function render({ animar = "no" } = {}) {
     fx.barras($("#carril"));
   }
 
-  $("#contador").textContent = `${plural(estado.series.length, "anime", "animes")} en la lista`;
+  const nPelis = estado.series.filter(esPeli).length;
+  const nAnimes = estado.series.length - nPelis;
+  $("#contador").textContent = nPelis
+    ? `${plural(nAnimes, "anime", "animes")} y ${plural(nPelis, "película", "películas")} en la lista`
+    : `${plural(nAnimes, "anime", "animes")} en la lista`;
   if (animar === "todo") {
     fx.entrada([...rejilla.children]);
     fx.entradaCarril([...$("#carril").children]);
@@ -168,12 +175,16 @@ function render({ animar = "no" } = {}) {
 }
 
 function renderStats() {
-  const temps = estado.series.reduce((a, s) => a + Math.max(1, s.temporadas?.length || 0), 0);
+  const animes = estado.series.filter((s) => !esPeli(s));
+  const pelis = estado.series.length - animes.length;
+  const temps = animes.reduce((a, s) => a + Math.max(1, s.temporadas?.length || 0), 0);
   const notas = estado.series.map(notaDe).filter((n) => n != null);
   const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
-  $('[data-palabra="series"]').textContent = estado.series.length === 1 ? "anime" : "animes";
+  $('[data-palabra="series"]').textContent = animes.length === 1 ? "anime" : "animes";
+  $('[data-palabra="peliculas"]').textContent = pelis === 1 ? "película" : "películas";
+  fx.contar($('[data-stat="peliculas"]'), pelis, (v) => String(Math.round(v)));
   $('[data-palabra="temporadas"]').textContent = temps === 1 ? "temporada" : "temporadas";
-  fx.contar($('[data-stat="series"]'), estado.series.length, (v) => String(Math.round(v)));
+  fx.contar($('[data-stat="series"]'), animes.length, (v) => String(Math.round(v)));
   fx.contar($('[data-stat="temporadas"]'), temps, (v) => String(Math.round(v)));
   if (media == null) $('[data-stat="media"]').textContent = "–";
   else fx.contar($('[data-stat="media"]'), media, fmt);
@@ -259,14 +270,14 @@ function contenidoDetalle(s) {
         s.titulo_original && h("p", { class: "det__original" }, s.titulo_original),
         h("p", { class: "det__meta" }, intercalar([
           s.anio && h("span", {}, String(s.anio)),
-          h("span", {}, plural(Math.max(1, temps.length), "temporada", "temporadas")),
-          s.nota == null && temps.length > 1 && h("span", {}, "nota media de temporadas"),
+          esPeli(s) ? h("span", {}, "Película") : h("span", {}, plural(Math.max(1, temps.length), "temporada", "temporadas")),
+          !esPeli(s) && s.nota == null && temps.length > 1 && h("span", {}, "nota media de temporadas"),
         ])),
         s.generos?.length && h("div", { class: "det__generos" }, s.generos.map((g) => h("span", {}, g))),
       ),
       h("div", { "data-entra": "", class: "det__anillo" }, anillo(n)),
     ),
-    h("section", { class: "det__temporadas", "aria-labelledby": "det-temps" },
+    !esPeli(s) && h("section", { class: "det__temporadas", "aria-labelledby": "det-temps" },
       h("div", { class: "det__temporadas-cab", "data-entra": "" },
         h("h3", { id: "det-temps" }, "Temporadas"),
         estado.editable && h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "temporada", serie_id: s.id }, { numero: (temps.at(-1)?.numero || 0) + 1, nombre: `${s.nombre} · Temporada ${(temps.at(-1)?.numero || 0) + 1}` }) }, svg(ICONOS.mas), "Añadir temporada"),
@@ -276,10 +287,10 @@ function contenidoDetalle(s) {
         : h("p", { class: "det__solo", "data-entra": "" }, "Aún no has apuntado temporadas sueltas: su nota es la del anime."),
     ),
     estado.editable && h("footer", { class: "det__acciones", "data-entra": "" },
-      h("button", { type: "button", class: "boton boton--peligro", onclick: () => borrarSerie(s) }, svg(ICONOS.borrar), "Borrar anime"),
-      h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "serie", id: s.id }, s) }, svg(ICONOS.editar), "Editar anime"),
+      h("button", { type: "button", class: "boton boton--peligro", onclick: () => borrarSerie(s) }, svg(ICONOS.borrar), esPeli(s) ? "Borrar película" : "Borrar anime"),
+      h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "serie", id: s.id }, s) }, svg(ICONOS.editar), esPeli(s) ? "Editar película" : "Editar anime"),
     ),
-  ];
+  ].filter(Boolean); // las piezas condicionales (temporadas en películas) llegan como false
 }
 
 function pintarDetalle(s) {
@@ -316,11 +327,27 @@ function previsualizar(url) {
 function rellenar(valores) {
   for (const [k, v] of Object.entries(valores)) {
     const campo = form.elements[k];
-    if (!campo || campo instanceof RadioNodeList) continue;
+    if (!campo) continue;
     campo.value = k === "generos" && Array.isArray(v) ? v.join(", ") : k === "nota" && v != null ? fmt(Number(v)) : (v ?? "");
   }
   previsualizar(form.elements.poster_url.value);
+  actualizarObra();
 }
+
+// Anime o película: cambia el título, la búsqueda y las ayudas del formulario
+function actualizarObra() {
+  const obra = contexto?.tipo === "serie" ? form.elements.tipo.value || "serie" : "serie";
+  form.dataset.obra = obra;
+  if (contexto?.tipo !== "serie") return;
+  const peli = obra === "pelicula";
+  $("#form-titulo").textContent = contexto.id ? (peli ? "Editar película" : "Editar anime") : peli ? "Añadir película" : "Añadir anime";
+  $("#f-buscar").placeholder = peli ? "Ej.: Your Name" : "Ej.: Frieren";
+}
+for (const radio of form.elements.tipo) radio.addEventListener("change", () => {
+  actualizarObra();
+  $("#f-resultados").replaceChildren();
+  if ($("#f-buscar").value.trim().length >= 2) $("#f-buscar").dispatchEvent(new Event("input"));
+});
 
 function abrirForm(ctx, valores = {}) {
   contexto = ctx;
@@ -329,11 +356,13 @@ function abrirForm(ctx, valores = {}) {
   form.querySelectorAll("[aria-invalid]").forEach((x) => x.removeAttribute("aria-invalid"));
   $("#f-resultados").replaceChildren();
   $("#form-titulo").textContent = ctx.tipo === "serie" ? (ctx.id ? "Editar anime" : "Añadir anime") : ctx.id ? "Editar temporada" : "Añadir temporada";
-  rellenar(valores);
+  rellenar({ tipo: ctx.tipo === "serie" && !ctx.id && estado.vista === "pelicula" ? "pelicula" : "serie", ...valores });
   const dlg = $("#dlg-form");
   fx.abrirModal(dlg, form);
   $("#f-buscar").focus();
 }
+
+const FORMATOS = { TV: "Serie", TV_SHORT: "Serie corta", MOVIE: "Película", SPECIAL: "Especial", OVA: "OVA", ONA: "ONA", MUSIC: "Música" };
 
 function mostrarResultados(media) {
   const lista = $("#f-resultados");
@@ -343,7 +372,7 @@ function mostrarResultados(media) {
     return h("li", {},
       h("button", { type: "button", class: "resultado", onclick: () => elegir(d) },
         imagen(d.poster_url) || h("span", { class: "resultado__hueco" }),
-        h("span", {}, h("strong", {}, d.nombre), h("small", {}, [d.anio, m.format?.replace("_", " ")].filter(Boolean).join(" · "))),
+        h("span", {}, h("strong", {}, d.nombre), h("small", {}, [d.anio, FORMATOS[m.format] || m.format?.replace("_", " ")].filter(Boolean).join(" · "))),
       ),
     );
   }));
@@ -369,7 +398,7 @@ $("#f-buscar").addEventListener("input", (e) => {
     ctrl,
     t: setTimeout(async () => {
       $("#f-resultados").replaceChildren(h("li", { class: "resultados__estado" }, "Buscando…"));
-      try { mostrarResultados(await anilist.buscar(texto, ctrl.signal)); }
+      try { mostrarResultados(await anilist.buscar(texto, ctrl.signal, form.dataset.obra === "pelicula")); }
       catch (err) { if (err.name !== "AbortError") $("#f-resultados").replaceChildren(h("li", { class: "resultados__estado" }, "AniList no responde; pega la URL a mano.")); }
     }, 350),
   };
@@ -402,6 +431,7 @@ form.addEventListener("submit", async (e) => {
         banner_url: urlSegura(v("banner_url")) || null,
         color: /^#[0-9a-f]{3,8}$/i.test(v("color")) ? v("color") : null,
         generos: v("generos").split(",").map((g) => g.trim()).filter(Boolean).slice(0, 6),
+        tipo: v("tipo") === "pelicula" ? "pelicula" : "serie",
       });
     } else {
       await datos.guardarTemporada({ ...base, serie_id: contexto.serie_id, numero: num("numero") ?? 1 });
@@ -466,6 +496,13 @@ $("#buscar").addEventListener("input", (e) => {
   clearTimeout(retardoBusqueda);
   retardoBusqueda = setTimeout(() => render({ animar: "filtro" }), 140);
 });
+$("#vistas").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-vista]");
+  if (!b) return;
+  estado.vista = b.dataset.vista;
+  $("#vistas").querySelectorAll("[data-vista]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  render({ animar: "filtro" });
+});
 $("#orden").addEventListener("change", (e) => {
   estado.orden = e.target.value;
   render({ animar: "filtro" });
@@ -515,7 +552,7 @@ async function elegirDelTunel(item) {
   dlg.style.setProperty("--c", colorSeguro(d.color));
   $("#visor-nombre").textContent = d.nombre;
   $("#visor-origen").textContent = s
-    ? (temps.length > 1 ? `En mi lista · ${temps.length} temporadas` : "En mi lista")
+    ? (esPeli(s) ? "Película en mi lista" : temps.length > 1 ? `En mi lista · ${temps.length} temporadas` : "En mi lista")
     : "Popular ahora en AniList";
   $("#visor-nota").textContent = fmt(n);
   $("#visor-nota").parentElement.hidden = !s;

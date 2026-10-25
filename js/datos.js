@@ -4,7 +4,7 @@ import { semillaDemo } from "./anilist.js";
 
 const SB_CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 const CLAVE_LOCAL = "kanso:demo:v1";
-const CAMPOS_SERIE = ["nombre", "titulo_original", "poster_url", "banner_url", "color", "anio", "generos", "nota", "anilist_id"];
+const CAMPOS_SERIE = ["nombre", "titulo_original", "poster_url", "banner_url", "color", "anio", "generos", "nota", "anilist_id", "tipo"];
 const CAMPOS_TEMPORADA = ["serie_id", "numero", "nombre", "poster_url", "anio", "nota", "anilist_id"];
 
 let sb = null;

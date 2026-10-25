@@ -223,6 +223,21 @@ h1, h2, h3, h4, p { margin: 0; }
 .ancha__relleno { position: absolute; inset: 0 auto 0 0; width: var(--p); border-radius: inherit; background: var(--acento); transform-origin: left center; }
 .ancha__nota { font-size: var(--t-peque); font-weight: 600; }
 
+/* Control segmentado: tipo de obra en el formulario y vista de la lista */
+.segmentado { display: inline-flex; gap: 4px; margin: 0; padding: 4px; border: 0; border-radius: 999px; background: var(--superficie); }
+.segmentado button, .segmentado label span {
+  display: grid; place-items: center; min-height: 36px; padding: 0 var(--e-4); border: 0; border-radius: 999px;
+  background: transparent; font-size: var(--t-peque); font-weight: 500; cursor: pointer;
+  transition: background-color .25s, color .25s;
+}
+.segmentado button:hover, .segmentado label:hover span { background: var(--hundido); }
+.segmentado button[aria-pressed="true"], .segmentado input:checked + span { background: var(--oscuro); color: var(--sobre-oscuro); }
+.segmentado label { position: relative; }
+.segmentado input { position: absolute; opacity: 0; pointer-events: none; }
+.segmentado input:focus-visible + span { outline: 2px solid var(--acento); outline-offset: 2px; }
+.formulario .segmentado { justify-self: start; background: var(--fondo); }
+.formulario[data-obra="pelicula"] [data-obra="serie"] { display: none; }
+
 /* Lista */
 .seccion__cab--lista { flex-wrap: wrap; }
 .herramientas { display: flex; gap: var(--e-2); flex-wrap: wrap; }
@@ -239,6 +254,8 @@ h1, h2, h3, h4, p { margin: 0; }
 .selector select:focus-visible { outline: 2px solid var(--texto); outline-offset: 0; }
 @media (max-width: 640px) {
   .herramientas { width: 100%; }
+  #vistas { width: 100%; }
+  #vistas button { flex: 1; }
   .buscador { flex: 1 1 100%; }
   .selector, .selector select { width: 100%; }
 }
