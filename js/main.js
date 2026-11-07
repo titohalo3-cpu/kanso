@@ -8,7 +8,7 @@ let tunel = null;
 let relleno = []; // portadas del día de AniList que acompañan a las mías en el túnel
 
 const $ = (s, r = document) => r.querySelector(s);
-const estado = { series: [], texto: "", orden: "recientes", vista: "todo", editable: true, abierta: null };
+const estado = { series: [], texto: "", orden: "recientes", vista: "todo", editable: false, abierta: null };
 const esPeli = (s) => s.tipo === "pelicula";
 let contexto = null; // qué edita el formulario: { tipo: "serie" | "temporada", id?, serie_id? }
 
@@ -79,7 +79,7 @@ function aviso(msg, tipo = "ok") {
 
 function mensajeError(e) {
   const m = e?.message || String(e);
-  if (e?.code === "42501" || /row-level security/i.test(m)) return "Supabase no deja escribir: ejecuta supabase/sin-login.sql en el SQL Editor.";
+  if (e?.code === "42501" || /row-level security/i.test(m)) return "Solo el dueño puede guardar: entra con tu usuario (botón «Entrar», arriba a la derecha).";
   if (/'tipo' column/i.test(m)) return "Falta la columna de películas: ejecuta supabase/peliculas.sql en el SQL Editor.";
   return `No se pudo guardar: ${m}`;
 }
@@ -153,7 +153,9 @@ function render({ animar = "no" } = {}) {
   $("#vacio").hidden = lista.length > 0;
   $("#vacio-texto").textContent = estado.series.length
     ? "Nada coincide con ese filtro."
-    : "Aún no has apuntado nada. Pulsa la bola naranja para añadir el último anime o película que terminaste.";
+    : estado.editable
+      ? "Aún no has apuntado nada. Pulsa la bola naranja para añadir el último anime o película que terminaste."
+      : "Todavía no hay nada en la lista.";
 
   const filtrando = estado.texto.trim() || estado.vista !== "todo";
   const top = estado.series.filter((s) => notaDe(s) != null).sort(ORDENES.nota).slice(0, 10);
@@ -507,7 +509,51 @@ $("#orden").addEventListener("change", (e) => {
   estado.orden = e.target.value;
   render({ animar: "filtro" });
 });
-$("#bola").addEventListener("click", () => abrirForm({ tipo: "serie" }));
+$("#bola").addEventListener("click", () => estado.editable && abrirForm({ tipo: "serie" }));
+
+// --- Sesión del dueño ------------------------------------------------------------
+// Solo quien entra con su usuario de Supabase y está en anime_duenos ve la bola y los botones
+// de editar; Supabase lo impone igualmente con RLS (supabase/solo-yo.sql).
+async function actualizarSesion({ avisar = false } = {}) {
+  const demo = datos.modo !== "supabase";
+  const haySesion = !demo && Boolean(await datos.sesion());
+  const antes = estado.editable;
+  estado.editable = await datos.esDueno();
+  $("#bola").hidden = !estado.editable;
+  const b = $("#btn-sesion");
+  b.hidden = demo;
+  b.textContent = haySesion ? "Salir" : "Entrar";
+  if (avisar && haySesion && !estado.editable) aviso("Tu usuario no está en anime_duenos: ejecuta la parte 2 de supabase/solo-yo.sql.", "error");
+  if (antes !== estado.editable) {
+    render();
+    const abierta = estado.series.find((x) => x.id === estado.abierta);
+    if (abierta && $("#detalle").open) pintarDetalle(abierta);
+  }
+}
+
+$("#btn-sesion").addEventListener("click", async () => {
+  if (await datos.sesion()) {
+    await datos.salir();
+    return aviso("Sesión cerrada: la lista queda en solo lectura.");
+  }
+  fx.abrirModal($("#dlg-acceso"), $("#form-acceso"));
+  $("#a-email").focus();
+});
+
+$("#form-acceso").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (!f.reportValidity()) return;
+  try {
+    await datos.entrar(f.email.value.trim(), f.clave.value);
+    f.reset();
+    fx.cerrarModal($("#dlg-acceso"), f);
+    await actualizarSesion({ avisar: true });
+    if (estado.editable) aviso("Ya puedes añadir y editar.");
+  } catch (err) {
+    aviso(/Invalid login/i.test(err.message) ? "Correo o contraseña incorrectos." : `No se pudo entrar: ${err.message}`, "error");
+  }
+});
 
 // --- Túnel de portadas -----------------------------------------------------------
 // Una portada por anime (nunca las de sus temporadas), mezclada con las populares del día que no tengo.
@@ -650,6 +696,11 @@ async function iniciar() {
   await Promise.all([fx.cargar(), datos.iniciar()]);
   fx.titular($("#titulo"));
   fx.bola($("#bola"));
+  if (datos.modo === "caido") {
+    const a = $("#aviso");
+    a.replaceChildren(h("strong", {}, "Sin conexión con la base de datos. "), "La lista no se puede cargar ahora mismo; vuelve a intentarlo en un rato.");
+    a.hidden = false;
+  }
   if (datos.modo === "demo") {
     const a = $("#aviso");
     a.replaceChildren(
@@ -660,6 +711,8 @@ async function iniciar() {
     );
     a.hidden = false;
   }
+  await actualizarSesion();
+  datos.alCambiarSesion(() => actualizarSesion());
   await recargar(true);
   fx.alEntrar(document.querySelectorAll(".seccion__cab"));
   iniciarTunel();

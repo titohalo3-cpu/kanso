@@ -1,4 +1,5 @@
-// Capa de datos: Supabase si las tablas existen; si no, modo demo en localStorage.
+// Capa de datos: Supabase si las tablas existen; si faltan, modo demo en localStorage;
+// si Supabase no responde (proyecto pausado, sin red), modo "caido": lista vacía y solo lectura.
 import { SUPABASE } from "./config.js";
 import { semillaDemo } from "./anilist.js";
 
@@ -20,7 +21,9 @@ export async function iniciar() {
     if (error) throw error;
     modo = "supabase";
   } catch (e) {
-    console.warn("[Kansō] Supabase sin tablas o sin conexión; uso el modo demo.", e.message || e);
+    const sinTablas = ["PGRST205", "42P01"].includes(e?.code);
+    modo = sinTablas ? "demo" : "caido";
+    console.warn(sinTablas ? "[Kansō] Supabase sin tablas; uso el modo demo." : "[Kansō] Supabase no responde.", e?.message || e);
     sb = null;
   }
   return modo;
@@ -52,6 +55,7 @@ function persistir() {
 
 // --- API común -------------------------------------------------------------
 export async function listar() {
+  if (modo === "caido") return [];
   if (sb) {
     const { data, error } = await sb
       .from("anime_series")
@@ -112,4 +116,35 @@ export async function borrarTemporada(id) {
   const m = await local();
   for (const s of m.series) s.temporadas = s.temporadas.filter((t) => t.id !== id);
   persistir();
+}
+
+// --- Sesión del dueño (solo con Supabase) ----------------------------------
+// Leer es público; añadir, editar y borrar exige haber entrado y estar en anime_duenos.
+export async function sesion() {
+  if (!sb) return null;
+  const { data } = await sb.auth.getSession();
+  return data.session;
+}
+
+export async function esDueno() {
+  if (modo === "caido") return false;
+  if (!sb) return true; // modo demo: todo es local
+  if (!(await sesion())) return false;
+  const { data, error } = await sb.rpc("anime_es_dueno");
+  return !error && data === true;
+}
+
+export function alCambiarSesion(cb) {
+  sb?.auth.onAuthStateChange((evento) => {
+    if (evento === "SIGNED_IN" || evento === "SIGNED_OUT") cb();
+  });
+}
+
+export async function entrar(email, clave) {
+  const { error } = await sb.auth.signInWithPassword({ email, password: clave });
+  if (error) throw error;
+}
+
+export async function salir() {
+  await sb?.auth.signOut();
 }

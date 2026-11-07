@@ -87,6 +87,9 @@ h1, h2, h3, h4, p { margin: 0; }
 .boton--peligro:hover { background: var(--rojo-suave); }
 .boton[aria-busy="true"] { opacity: .6; pointer-events: none; }
 .enlace { position: relative; font-size: 0.95rem; font-weight: 500; text-decoration: none; padding: var(--e-2) 0; }
+.barra__sesion { border: 0; background: none; color: var(--texto-2); cursor: pointer; }
+.barra__sesion:hover { color: var(--texto); }
+.formulario--estrecho { width: min(400px, 100%); }
 .enlace::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 1.5px; background: currentColor;
   transform: scaleX(0); transform-origin: right; transition: transform .5s var(--curva);
