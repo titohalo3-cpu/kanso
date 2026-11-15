@@ -394,15 +394,23 @@ $("#f-buscar").addEventListener("input", (e) => {
   const texto = e.target.value.trim();
   clearTimeout(busqueda?.t);
   busqueda?.ctrl.abort();
-  if (texto.length < 2) return $("#f-resultados").replaceChildren();
+  if (texto.length < 3) return $("#f-resultados").replaceChildren();
   const ctrl = new AbortController();
   busqueda = {
     ctrl,
     t: setTimeout(async () => {
       $("#f-resultados").replaceChildren(h("li", { class: "resultados__estado" }, "Buscando…"));
       try { mostrarResultados(await anilist.buscar(texto, ctrl.signal, form.dataset.obra === "pelicula")); }
-      catch (err) { if (err.name !== "AbortError") $("#f-resultados").replaceChildren(h("li", { class: "resultados__estado" }, "AniList no responde; pega la URL a mano.")); }
-    }, 350),
+      catch (err) {
+        if (err.name === "AbortError") return;
+        const motivo = err.estado === 429
+          ? "AniList va saturado ahora mismo: espera unos segundos y vuelve a escribir, o pega la URL de la portada a mano."
+          : err.estado
+            ? `AniList ha fallado (error ${err.estado}); prueba en un momento o pega la URL de la portada a mano.`
+            : "No se puede conectar con AniList desde esta red; pega la URL de la portada a mano.";
+        $("#f-resultados").replaceChildren(h("li", { class: "resultados__estado" }, motivo));
+      }
+    }, 600),
   };
 });
 $("#f-buscar").addEventListener("keydown", (e) => {

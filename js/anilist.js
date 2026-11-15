@@ -9,23 +9,50 @@ const GENEROS = {
   "Slice of Life": "Cotidiano", Sports: "Deportes", Supernatural: "Sobrenatural", Thriller: "Thriller",
 };
 
+// AniList limita las peticiones por minuto (429) y a veces falla un momento (5xx):
+// se reintenta una vez tras la espera que pide, y lo ya buscado sale de la caché.
+const cache = new Map();
+const espera = (ms, signal) => new Promise((ok, mal) => {
+  const t = setTimeout(ok, ms);
+  signal?.addEventListener("abort", () => { clearTimeout(t); mal(new DOMException("Cancelada", "AbortError")); }, { once: true });
+});
+
+export class ErrorAniList extends Error {
+  constructor(estado) {
+    super(estado === 429 ? "AniList está saturado" : `AniList respondió ${estado}`);
+    this.estado = estado;
+  }
+}
+
 async function consulta(query, variables, signal) {
-  const res = await fetch(API, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ query, variables }),
-    signal,
-  });
-  if (!res.ok) throw new Error(`AniList respondió ${res.status}`);
-  const { data } = await res.json();
-  return data?.Page?.media ?? [];
+  const clave = JSON.stringify([query, variables]);
+  if (cache.has(clave)) return cache.get(clave);
+  for (let intento = 0; ; intento++) {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ query, variables }),
+      signal,
+    });
+    if (res.ok) {
+      const { data } = await res.json();
+      const media = data?.Page?.media ?? [];
+      cache.set(clave, media);
+      return media;
+    }
+    if (intento > 0 || !(res.status === 429 || res.status >= 500)) throw new ErrorAniList(res.status);
+    const segundos = Number(res.headers.get("Retry-After")) || 3;
+    await espera(Math.min(segundos, 10) * 1000, signal);
+  }
 }
 
 // soloPeliculas: limita la búsqueda a películas (formato MOVIE)
+// (AniList responde 500 si format_in llega a null, así que el filtro solo se añade con películas)
 export function buscar(texto, signal, soloPeliculas = false) {
+  const filtro = soloPeliculas ? ", format_in: [MOVIE]" : "";
   return consulta(
-    `query ($s: String, $f: [MediaFormat]) { Page(perPage: 8) { media(search: $s, type: ANIME, sort: SEARCH_MATCH, format_in: $f) { ${CAMPOS} } } }`,
-    { s: texto, f: soloPeliculas ? ["MOVIE"] : null },
+    `query ($s: String) { Page(perPage: 8) { media(search: $s, type: ANIME, sort: SEARCH_MATCH${filtro}) { ${CAMPOS} } } }`,
+    { s: texto },
     signal,
   );
 }
