@@ -241,6 +241,26 @@ h1, h2, h3, h4, p { margin: 0; }
 .formulario .segmentado { justify-self: start; background: var(--fondo); }
 .formulario[data-obra="pelicula"] [data-obra="serie"] { display: none; }
 
+/* «Lo estoy viendo»: interruptor del formulario, etiqueta de la tarjeta y de la ficha */
+.interruptor { display: inline-flex; align-items: center; gap: var(--e-3); justify-self: start; font-size: var(--t-peque); font-weight: 500; cursor: pointer; }
+.interruptor input { position: absolute; opacity: 0; pointer-events: none; }
+.interruptor__pista { position: relative; width: 42px; height: 24px; border-radius: 999px; background: var(--hundido-2); transition: background-color .25s; }
+.interruptor__pista::after {
+  content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--sobre-oscuro); transition: transform .35s var(--curva);
+}
+.interruptor input:checked + .interruptor__pista { background: var(--verde); }
+.interruptor input:checked + .interruptor__pista::after { transform: translateX(18px); }
+.interruptor input:focus-visible + .interruptor__pista { outline: 2px solid var(--acento); outline-offset: 2px; }
+.tarjeta__viendo, .det__viendo {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 7px; border-radius: 999px;
+  font-size: 0.75rem; font-weight: 600;
+}
+.tarjeta__viendo { position: absolute; top: var(--e-2); left: var(--e-2); z-index: 2; background: var(--oscuro); color: var(--sobre-oscuro); }
+.det__viendo { background: var(--oscuro); color: var(--sobre-oscuro); }
+.tarjeta__viendo i, .det__viendo i { width: 7px; height: 7px; border-radius: 50%; background: var(--verde); animation: latir 1.6s ease-in-out infinite; }
+@keyframes latir { 50% { opacity: .35; transform: scale(.75); } }
+
 /* Lista */
 .seccion__cab--lista { flex-wrap: wrap; }
 .herramientas { display: flex; gap: var(--e-2); flex-wrap: wrap; }

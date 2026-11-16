@@ -10,6 +10,7 @@ let relleno = []; // portadas del día de AniList que acompañan a las mías en 
 const $ = (s, r = document) => r.querySelector(s);
 const estado = { series: [], texto: "", orden: "recientes", vista: "todo", editable: false, abierta: null };
 const esPeli = (s) => s.tipo === "pelicula";
+const esViendo = (s) => s.viendo === true;
 let contexto = null; // qué edita el formulario: { tipo: "serie" | "temporada", id?, serie_id? }
 
 // --- Utilidades --------------------------------------------------------------
@@ -80,6 +81,7 @@ function aviso(msg, tipo = "ok") {
 function mensajeError(e) {
   const m = e?.message || String(e);
   if (e?.code === "42501" || /row-level security/i.test(m)) return "Solo el dueño puede guardar: entra con tu usuario (botón «Entrar», arriba a la derecha).";
+  if (/'viendo' column/i.test(m)) return "Falta la columna de «viendo»: ejecuta supabase/viendo.sql en el SQL Editor.";
   if (/'tipo' column/i.test(m)) return "Falta la columna de películas: ejecuta supabase/peliculas.sql en el SQL Editor.";
   return `No se pudo guardar: ${m}`;
 }
@@ -91,9 +93,10 @@ function tarjeta(s) {
   return h("li", { class: "celda" },
     h("button", {
       type: "button", class: "tarjeta", style: { "--c": colorSeguro(s.color) }, dataset: { id: s.id },
-      "aria-label": `${s.nombre} — nota ${fmt(n)}${temps > 1 ? `. ${temps} temporadas` : ""}`,
+      "aria-label": `${s.nombre} — nota ${fmt(n)}${temps > 1 ? `. ${temps} temporadas` : ""}${esViendo(s) ? ". Lo estoy viendo" : ""}`,
     },
       imagen(s.poster_url, "tarjeta__img"),
+      esViendo(s) && h("span", { class: "tarjeta__viendo" }, h("i", { "aria-hidden": "true" }), "Viendo"),
       esPeli(s) ? h("span", { class: "tarjeta__temps" }, "Película") : temps > 1 && h("span", { class: "tarjeta__temps" }, `${temps} temp.`),
       h("span", { class: "tarjeta__info" },
         h("span", { class: "tarjeta__nombre" }, s.nombre),
@@ -139,7 +142,7 @@ const ORDENES = {
 function filtradas() {
   const t = normal(estado.texto.trim());
   return estado.series
-    .filter((s) => estado.vista === "todo" || (estado.vista === "pelicula") === esPeli(s))
+    .filter((s) => estado.vista === "todo" || (estado.vista === "viendo" ? esViendo(s) : (estado.vista === "pelicula") === esPeli(s)))
     .filter((s) => (!t || normal(`${s.nombre} ${s.titulo_original || ""}`).includes(t)))
     .sort(ORDENES[estado.orden]);
 }
@@ -272,6 +275,7 @@ function contenidoDetalle(s) {
         s.titulo_original && h("p", { class: "det__original" }, s.titulo_original),
         h("p", { class: "det__meta" }, intercalar([
           s.anio && h("span", {}, String(s.anio)),
+          esViendo(s) && h("span", { class: "det__viendo" }, h("i", { "aria-hidden": "true" }), "Viendo ahora"),
           esPeli(s) ? h("span", {}, "Película") : h("span", {}, plural(Math.max(1, temps.length), "temporada", "temporadas")),
           !esPeli(s) && s.nota == null && temps.length > 1 && h("span", {}, "nota media de temporadas"),
         ])),
@@ -289,6 +293,7 @@ function contenidoDetalle(s) {
         : h("p", { class: "det__solo", "data-entra": "" }, "Aún no has apuntado temporadas sueltas: su nota es la del anime."),
     ),
     estado.editable && h("footer", { class: "det__acciones", "data-entra": "" },
+      h("button", { type: "button", class: "boton boton--claro", onclick: () => cambiarViendo(s) }, esViendo(s) ? "Marcar como terminado" : "Lo estoy viendo"),
       h("button", { type: "button", class: "boton boton--peligro", onclick: () => borrarSerie(s) }, svg(ICONOS.borrar), esPeli(s) ? "Borrar película" : "Borrar anime"),
       h("button", { type: "button", class: "boton boton--claro", onclick: () => abrirForm({ tipo: "serie", id: s.id }, s) }, svg(ICONOS.editar), esPeli(s) ? "Editar película" : "Editar anime"),
     ),
@@ -330,6 +335,7 @@ function rellenar(valores) {
   for (const [k, v] of Object.entries(valores)) {
     const campo = form.elements[k];
     if (!campo) continue;
+    if (campo.type === "checkbox") { campo.checked = v === true; continue; }
     campo.value = k === "generos" && Array.isArray(v) ? v.join(", ") : k === "nota" && v != null ? fmt(Number(v)) : (v ?? "");
   }
   previsualizar(form.elements.poster_url.value);
@@ -442,6 +448,7 @@ form.addEventListener("submit", async (e) => {
         color: /^#[0-9a-f]{3,8}$/i.test(v("color")) ? v("color") : null,
         generos: v("generos").split(",").map((g) => g.trim()).filter(Boolean).slice(0, 6),
         tipo: v("tipo") === "pelicula" ? "pelicula" : "serie",
+        viendo: fd.get("viendo") === "on",
       });
     } else {
       await datos.guardarTemporada({ ...base, serie_id: contexto.serie_id, numero: num("numero") ?? 1 });
@@ -455,6 +462,15 @@ form.addEventListener("submit", async (e) => {
     boton.removeAttribute("aria-busy");
   }
 });
+
+// Marca o desmarca «lo estoy viendo» desde la ficha, sin abrir el formulario
+async function cambiarViendo(s) {
+  try {
+    await datos.guardarSerie({ id: s.id, viendo: !esViendo(s) });
+    await recargar();
+    aviso(esViendo(s) ? `«${s.nombre}» marcado como terminado.` : `Ahora estás viendo «${s.nombre}».`);
+  } catch (err) { aviso(mensajeError(err), "error"); }
+}
 
 async function borrarSerie(s) {
   if (!confirm(`¿Borrar «${s.nombre}» y todas sus temporadas?`)) return;
@@ -606,7 +622,7 @@ async function elegirDelTunel(item) {
   dlg.style.setProperty("--c", colorSeguro(d.color));
   $("#visor-nombre").textContent = d.nombre;
   $("#visor-origen").textContent = s
-    ? (esPeli(s) ? "Película en mi lista" : temps.length > 1 ? `En mi lista · ${temps.length} temporadas` : "En mi lista")
+    ? (esViendo(s) ? "Lo estoy viendo ahora" : esPeli(s) ? "Película en mi lista" : temps.length > 1 ? `En mi lista · ${temps.length} temporadas` : "En mi lista")
     : "Popular ahora en AniList";
   $("#visor-nota").textContent = fmt(n);
   $("#visor-nota").parentElement.hidden = !s;

@@ -33,6 +33,7 @@ create table if not exists public.anime_series (
   nota            numeric(3,1) check (nota between 0 and 10),
   anilist_id      int,
   tipo            text not null default 'serie' check (tipo in ('serie', 'pelicula')),
+  viendo          boolean not null default false,
   creado_en       timestamptz not null default now()
 );
 
